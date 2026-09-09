@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import fs from "fs";
 import path from "path";
+import { runMigrations } from "./migrate";
 import { logger } from "../utils/logger";
 
 const DATA_DIR = path.join(process.cwd(), "data");
@@ -21,6 +22,7 @@ function initSchema(database: DatabaseSync): void {
       telegram_user_id INTEGER NOT NULL,
       telegram_username TEXT,
       product_id TEXT NOT NULL,
+      content_id INTEGER,
       status TEXT NOT NULL DEFAULT 'pending',
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       invite_link TEXT,
@@ -55,6 +57,8 @@ function initSchema(database: DatabaseSync): void {
     CREATE INDEX IF NOT EXISTS idx_product_content_type
       ON product_content(product_id, content_type);
   `);
+
+  runMigrations(database);
 }
 
 export function getDatabase(): DatabaseSync {

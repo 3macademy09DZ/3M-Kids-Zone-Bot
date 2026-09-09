@@ -9,6 +9,7 @@ import {
   getOrdersWithInviteLinks,
   getUniqueCustomerIds,
 } from "../database/orders";
+import { getContentItemById } from "../database/content";
 import { getProductById } from "../data/products";
 import type { InviteLinkService } from "../services/inviteLink";
 import {
@@ -16,6 +17,7 @@ import {
   adminMenuKeyboard,
   adminOrderKeyboard,
   buildApproveOrderCallback,
+  openMyProductsKeyboard,
 } from "../keyboards/menus";
 import type { Order, OrderStatus } from "../database/types";
 import { isPendingOrderStatus } from "../database/types";
@@ -48,9 +50,19 @@ function getStatusLabel(status: string): string {
   return STATUS_LABELS[normalized as OrderStatus] ?? status;
 }
 
+function getOrderVideoTitle(order: Order): string {
+  if (order.contentId == null) {
+    return "غير محدد";
+  }
+
+  const item = getContentItemById(order.contentId);
+  return item?.titleAr ?? `فيديو #${order.contentId}`;
+}
+
 export function buildOrderMessage(order: Order): string {
   const product = getProductById(order.productId);
   const productName = product?.nameAr ?? order.productId;
+  const videoTitle = getOrderVideoTitle(order);
   const username = order.telegramUsername
     ? `@${order.telegramUsername}`
     : `ID:${order.telegramUserId}`;
@@ -59,7 +71,8 @@ export function buildOrderMessage(order: Order): string {
     `📦 <b>طلب #${order.id}</b>\n\n` +
     `📌 الحالة: ${escapeHtml(getStatusLabel(order.status))}\n` +
     `👤 العميل: ${escapeHtml(username)}\n` +
-    `📦 المنتج: ${escapeHtml(productName)}\n` +
+    `📦 الحزمة: ${escapeHtml(productName)}\n` +
+    `🎬 الفيديو: ${escapeHtml(videoTitle)}\n` +
     `📅 التاريخ: ${escapeHtml(order.createdAt)}`
   );
 }
@@ -175,8 +188,11 @@ export async function handleAdminApproveOrder(
     try {
       await ctx.api.sendMessage(
         result.order.telegramUserId,
-        "✅ تمت الموافقة على طلبك!\n" +
-          "📦 المنتج أصبح متاحًا الآن في قسم «منتجاتي»."
+        "✅ تمت الموافقة على طلبك\n" +
+          "🎬 أصبح الفيديو متاحًا لك الآن",
+        {
+          reply_markup: openMyProductsKeyboard(),
+        }
       );
     } catch (error) {
       logger.error(

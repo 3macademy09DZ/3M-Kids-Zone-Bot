@@ -9,7 +9,9 @@ export const CB = {
   CONTACT: "contact",
   BACK_MAIN: "back_main",
   ORDER_PRODUCT: "order_product:",
+  ORDER_CONTENT: "order_content:",
   CONFIRM_ORDER: "confirm_order:",
+  MY_PRODUCTS: "my_products",
   MY_PRODUCT: "my_product:",
   ADMIN_ORDERS: "admin_orders",
   ADMIN_APPROVE_ORDER: "admin_approve_order:",
@@ -32,7 +34,13 @@ export function mainMenuKeyboard(): InlineKeyboard {
     .row()
     .text("🛒 طلب المحتوى", CB.ORDER)
     .row()
+    .text("📦 منتجاتي", CB.MY_PRODUCTS)
+    .row()
     .text("📞 التواصل معنا", CB.CONTACT);
+}
+
+export function openMyProductsKeyboard(): InlineKeyboard {
+  return new InlineKeyboard().text("📦 فتح منتجاتي", CB.MY_PRODUCTS);
 }
 
 export function backToMainKeyboard(): InlineKeyboard {
@@ -50,11 +58,26 @@ export function productListKeyboard(
   return keyboard;
 }
 
-export function confirmOrderKeyboard(productId: string): InlineKeyboard {
+export function packageVideoListKeyboard(
+  videos: { id: number; titleAr: string }[]
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  for (const video of videos) {
+    keyboard.text(`🎬 ${video.titleAr}`, `${CB.ORDER_CONTENT}${video.id}`).row();
+  }
+  keyboard.text("↩️ رجوع", CB.ORDER).row();
+  keyboard.text("↩️ القائمة الرئيسية", CB.BACK_MAIN);
+  return keyboard;
+}
+
+export function confirmOrderKeyboard(
+  contentId: number,
+  productId: string
+): InlineKeyboard {
   return new InlineKeyboard()
-    .text("✅ تأكيد الطلب", `${CB.CONFIRM_ORDER}${productId}`)
+    .text("✅ تأكيد الطلب", `${CB.CONFIRM_ORDER}${contentId}`)
     .row()
-    .text("↩️ رجوع", CB.ORDER)
+    .text("↩️ رجوع", `${CB.ORDER_PRODUCT}${productId}`)
     .row()
     .text("🏠 القائمة الرئيسية", CB.BACK_MAIN);
 }
@@ -123,6 +146,32 @@ export function myProductsKeyboard(productIds: string[]): InlineKeyboard {
   }
 
   keyboard.text("↩️ القائمة الرئيسية", CB.BACK_MAIN);
+  return keyboard;
+}
+
+export function myVideosKeyboard(
+  videos: { id: number; titleAr: string }[]
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+
+  for (const video of videos) {
+    keyboard.text(`🎬 ${video.titleAr}`, `${CB.MY_CONTENT_ITEM}${video.id}`).row();
+  }
+
+  keyboard.text("↩️ القائمة الرئيسية", CB.BACK_MAIN);
+  return keyboard;
+}
+
+export function myProductVideosKeyboard(
+  videos: { id: number; titleAr: string }[]
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+
+  for (const video of videos) {
+    keyboard.text(`🎬 ${video.titleAr}`, `${CB.MY_CONTENT_ITEM}${video.id}`).row();
+  }
+
+  keyboard.text("↩️ منتجاتي", CB.MY_PRODUCTS_BACK);
   return keyboard;
 }
 

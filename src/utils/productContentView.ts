@@ -46,9 +46,8 @@ export function buildProductSectionsMessage(
 export function buildSectionContentMessage(
   productName: string,
   contentType: ContentType,
-  productId: string
+  items: ProductContentItem[]
 ): string {
-  const items = getContentItemsByProductAndType(productId, contentType);
   const lines = [
     `📂 *${productName}*`,
     "",
@@ -131,9 +130,9 @@ export function customerProductSectionsKeyboard(productId: string): InlineKeyboa
 
 export function customerSectionItemsKeyboard(
   productId: string,
-  contentType: ContentType
+  contentType: ContentType,
+  items: ProductContentItem[]
 ): InlineKeyboard {
-  const items = getContentItemsByProductAndType(productId, contentType);
   const keyboard = new InlineKeyboard();
 
   for (const item of items) {

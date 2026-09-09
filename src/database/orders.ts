@@ -1,5 +1,6 @@
 import { getDatabase } from "./db";
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
+import { grantVideoEntitlement } from "./entitlements";
 import type { CreateOrderInput, Order, OrderStatus } from "./types";
 import { isPendingOrderStatus } from "./types";
 
@@ -8,6 +9,7 @@ interface OrderRow {
   telegram_user_id: number;
   telegram_username: string | null;
   product_id: string;
+  content_id: number | null;
   status: string;
   created_at: string;
   invite_link: string | null;
@@ -29,6 +31,7 @@ function mapRow(row: OrderRow): Order {
     telegramUserId: row.telegram_user_id,
     telegramUsername: row.telegram_username,
     productId: row.product_id,
+    contentId: row.content_id ?? null,
     status: normalizeOrderStatus(row.status),
     createdAt: row.created_at,
     inviteLink: row.invite_link,
@@ -54,14 +57,15 @@ function getAllRows(
 export function createOrder(input: CreateOrderInput): Order {
   const db = getDatabase();
   const stmt = db.prepare(`
-    INSERT INTO orders (telegram_user_id, telegram_username, product_id, notes)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO orders (telegram_user_id, telegram_username, product_id, content_id, notes)
+    VALUES (?, ?, ?, ?, ?)
   `);
 
   const result = stmt.run(
     input.telegramUserId,
     input.telegramUsername,
     input.productId,
+    input.contentId,
     input.notes ?? null
   );
 
@@ -133,6 +137,9 @@ export function approveOrder(id: number): ApproveOrderResult {
 
   if (!isPendingOrderStatus(order.status)) {
     if (PURCHASED_STATUSES.includes(order.status)) {
+      if (order.contentId != null) {
+        grantVideoEntitlement(order.telegramUserId, order.contentId, order.id);
+      }
       return { ok: true, order, alreadyApproved: true };
     }
     return { ok: false, reason: "not_pending" };
@@ -141,6 +148,10 @@ export function approveOrder(id: number): ApproveOrderResult {
   const updated = updateOrderStatus(id, "confirmed");
   if (!updated) {
     return { ok: false, reason: "not_found" };
+  }
+
+  if (updated.contentId != null) {
+    grantVideoEntitlement(updated.telegramUserId, updated.contentId, updated.id);
   }
 
   return { ok: true, order: updated, alreadyApproved: false };

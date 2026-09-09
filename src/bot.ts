@@ -11,6 +11,7 @@ import { handleStart, handleBackToMain, handleAboutContent, handleContact } from
 import {
   handleOrderMenu,
   handleProductSelect,
+  handleVideoSelect,
   handleConfirmOrder,
 } from "./handlers/order";
 import {
@@ -31,6 +32,7 @@ import {
 } from "./handlers/adminContent";
 import {
   handleMyProducts,
+  handleMyProductsOpen,
   handleMyProductOpen,
   handleMyProductsBack,
   handleMyContentSection,
@@ -59,9 +61,14 @@ export function createBot(config: EnvConfig): Bot {
     await handleProductSelect(ctx, productId);
   });
 
-  bot.callbackQuery(new RegExp(`^${CB.CONFIRM_ORDER}(.+)$`), async (ctx) => {
-    const productId = ctx.match![1];
-    await handleConfirmOrder(ctx, productId);
+  bot.callbackQuery(new RegExp(`^${CB.ORDER_CONTENT}(\\d+)$`), async (ctx) => {
+    const contentId = Number(ctx.match![1]);
+    await handleVideoSelect(ctx, contentId);
+  });
+
+  bot.callbackQuery(new RegExp(`^${CB.CONFIRM_ORDER}(\\d+)$`), async (ctx) => {
+    const contentId = Number(ctx.match![1]);
+    await handleConfirmOrder(ctx, contentId);
   });
 
   bot.callbackQuery(CB.ADMIN_BACK, adminOnly, handleAdminBack);
@@ -93,6 +100,7 @@ export function createBot(config: EnvConfig): Bot {
     handleAdminSettings(ctx, config, inviteLinkService)
   );
 
+  bot.callbackQuery(CB.MY_PRODUCTS, handleMyProductsOpen);
   bot.callbackQuery(CB.MY_PRODUCTS_BACK, handleMyProductsBack);
   bot.callbackQuery(new RegExp(`^${CB.MY_PRODUCT}(.+)$`), async (ctx) => {
     const productId = ctx.match![1];
