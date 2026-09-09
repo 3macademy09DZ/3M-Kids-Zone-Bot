@@ -6,7 +6,7 @@ Built with Node.js, TypeScript, and [grammY](https://grammy.dev/).
 
 ## Requirements
 
-- Node.js 18 or later (Node.js 22+ recommended for built-in SQLite support)
+- Node.js 22 or later (required for built-in SQLite via `node:sqlite`)
 - npm
 
 ## Installation
@@ -93,6 +93,8 @@ npm run typecheck
 npm run build
 npm start
 ```
+
+Railway deploys from the root `Dockerfile`, which uses Node.js 22 for both build and runtime. Do not bake `.env` into the image; set `BOT_TOKEN` and other secrets as Railway service variables.
 
 ## Bot Features
 

@@ -12,7 +12,7 @@
   "keywords": ["telegram", "bot", "grammy", "3m-kids-zone"],
   "license": "UNLICENSED",
   "engines": {
-    "node": ">=22"
+    "node": "22"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
