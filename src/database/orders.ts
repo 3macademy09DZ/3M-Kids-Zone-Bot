@@ -84,6 +84,28 @@ export function getOrdersByUserId(telegramUserId: number): Order[] {
   return rows.map(mapRow);
 }
 
+const PURCHASED_STATUSES: OrderStatus[] = [
+  "confirmed",
+  "invite_sent",
+  "completed",
+];
+
+export function getPurchasedOrdersByUserId(telegramUserId: number): Order[] {
+  const db = getDatabase();
+  const placeholders = PURCHASED_STATUSES.map(() => "?").join(", ");
+  const rows = getAllRows(
+    db.prepare(`
+      SELECT * FROM orders
+      WHERE telegram_user_id = ?
+        AND status IN (${placeholders})
+      ORDER BY id DESC
+    `),
+    telegramUserId,
+    ...PURCHASED_STATUSES
+  );
+  return rows.map(mapRow);
+}
+
 export function updateOrderStatus(id: number, status: OrderStatus): Order | null {
   const db = getDatabase();
   db.prepare("UPDATE orders SET status = ? WHERE id = ?").run(status, id);

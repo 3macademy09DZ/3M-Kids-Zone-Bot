@@ -20,6 +20,7 @@ import {
   handleAdminInvites,
   handleAdminSettings,
 } from "./handlers/admin";
+import { handleMyProducts } from "./handlers/myProducts";
 
 export function createBot(config: EnvConfig): Bot {
   getDatabase();
@@ -29,6 +30,7 @@ export function createBot(config: EnvConfig): Bot {
   const adminOnly = createAdminMiddleware(config);
 
   bot.command("start", handleStart);
+  bot.command("myproducts", handleMyProducts);
 
   bot.command("admin", adminOnly, handleAdminCommand);
 
