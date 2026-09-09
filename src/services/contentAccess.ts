@@ -1,6 +1,9 @@
 import { getContentItemById, getEntitledContentItemsForUser } from "../database/content";
 import { userHasVideoEntitlement } from "../database/entitlements";
-import type { ProductContentItem } from "../database/contentTypes";
+import {
+  isPurchasableContentType,
+  type ProductContentItem,
+} from "../database/contentTypes";
 
 export function userHasVideoAccess(
   telegramUserId: number,
@@ -12,8 +15,8 @@ export function userHasVideoAccess(
 export function getAccessibleVideos(
   telegramUserId: number
 ): ProductContentItem[] {
-  return getEntitledContentItemsForUser(telegramUserId).filter(
-    (item) => item.contentType === "video"
+  return getEntitledContentItemsForUser(telegramUserId).filter((item) =>
+    isPurchasableContentType(item.contentType)
   );
 }
 

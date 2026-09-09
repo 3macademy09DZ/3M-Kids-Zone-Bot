@@ -1,6 +1,13 @@
 import type { Context } from "grammy";
 import { getAllProducts, getProductById } from "../data/products";
 import { getContentItemById, getContentItemsByProductAndType } from "../database/content";
+import {
+  CONTENT_TYPE_EMOJI,
+  CONTENT_TYPE_ITEM_LABEL,
+  CONTENT_TYPE_LABELS,
+  isPurchasableContentType,
+  type ProductContentItem,
+} from "../database/contentTypes";
 import { createOrder } from "../database/orders";
 import {
   backToMainKeyboard,
@@ -12,13 +19,42 @@ import {
 import { userHasVideoAccess } from "../services/contentAccess";
 import { logger } from "../utils/logger";
 
+function getPurchasableItems(productId: string): ProductContentItem[] {
+  return [
+    ...getContentItemsByProductAndType(productId, "video"),
+    ...getContentItemsByProductAndType(productId, "game"),
+  ];
+}
+
+function buildPurchasableListText(items: ProductContentItem[]): string {
+  const videos = items.filter((item) => item.contentType === "video");
+  const games = items.filter((item) => item.contentType === "game");
+  const sections: string[] = [];
+
+  if (videos.length > 0) {
+    sections.push(
+      `*${CONTENT_TYPE_LABELS.video} المتاحة للطلب:*`,
+      ...videos.map((item) => `• ${item.titleAr}`)
+    );
+  }
+
+  if (games.length > 0) {
+    sections.push(
+      `*${CONTENT_TYPE_LABELS.game} المتاحة للطلب:*`,
+      ...games.map((item) => `• ${item.titleAr}`)
+    );
+  }
+
+  return sections.join("\n");
+}
+
 export async function handleOrderMenu(ctx: Context): Promise<void> {
   await ctx.answerCallbackQuery();
   const products = getAllProducts();
 
   const text =
     "🛒 *طلب المحتوى*\n\n" +
-    "اختر الحزمة/القسم أولًا، ثم اختر الفيديو الذي تريد شراءه.\n\n" +
+    "اختر الحزمة/القسم أولًا، ثم اختر الفيديو أو اللعبة/النشاط الذي تريد شراءه.\n\n" +
     "_الأسعار والدفع سيتم إضافتهما لاحقاً._";
 
   await ctx.editMessageText(text, {
@@ -41,13 +77,13 @@ export async function handleProductSelect(
     return;
   }
 
-  const videos = getContentItemsByProductAndType(productId, "video");
+  const items = getPurchasableItems(productId);
 
-  if (videos.length === 0) {
+  if (items.length === 0) {
     await ctx.editMessageText(
       `📦 *${product.nameAr}*\n\n` +
         `${product.descriptionAr}\n\n` +
-        "_لا توجد فيديوهات في هذه الحزمة حالياً._",
+        "_لا توجد فيديوهات أو ألعاب/أنشطة في هذه الحزمة حالياً._",
       {
         parse_mode: "Markdown",
         reply_markup: packageVideoListKeyboard([]),
@@ -56,17 +92,14 @@ export async function handleProductSelect(
     return;
   }
 
-  const lines = videos.map((video) => `• ${video.titleAr}`);
-
   await ctx.editMessageText(
     `📦 *${product.nameAr}*\n\n` +
       `${product.descriptionAr}\n\n` +
-      "*الفيديوهات المتاحة للطلب:*\n" +
-      lines.join("\n") +
-      "\n\n_اختر فيديو واحدًا تريد شراءه:_",
+      buildPurchasableListText(items) +
+      "\n\n_اختر عنصراً واحداً تريد شراءه:_",
     {
       parse_mode: "Markdown",
-      reply_markup: packageVideoListKeyboard(videos),
+      reply_markup: packageVideoListKeyboard(items),
     }
   );
 }
@@ -80,17 +113,20 @@ export async function handleVideoSelect(
   const product = item ? getProductById(item.productId) : undefined;
   const user = ctx.from;
 
-  if (!item || item.contentType !== "video" || !product) {
-    await ctx.editMessageText("❌ الفيديو غير موجود.", {
+  if (!item || !isPurchasableContentType(item.contentType) || !product) {
+    await ctx.editMessageText("❌ المحتوى غير موجود.", {
       reply_markup: backToMainKeyboard(),
     });
     return;
   }
 
+  const itemLabel = CONTENT_TYPE_ITEM_LABEL[item.contentType];
+  const emoji = CONTENT_TYPE_EMOJI[item.contentType];
+
   if (user && userHasVideoAccess(user.id, item.id)) {
     await ctx.editMessageText(
-      "✅ *هذا الفيديو متاح بالفعل في حسابك.*\n\n" +
-        `🎬 ${item.titleAr}\n` +
+      `✅ *هذا ${itemLabel} متاح بالفعل في حسابك.*\n\n` +
+        `${emoji} ${item.titleAr}\n` +
         `📦 ${product.nameAr}\n\n` +
         "يمكنك فتحه من قسم «منتجاتي».",
       {
@@ -102,10 +138,10 @@ export async function handleVideoSelect(
   }
 
   const text =
-    `🎬 *${item.titleAr}*\n\n` +
+    `${emoji} *${item.titleAr}*\n\n` +
     `📦 الحزمة: ${product.nameAr}\n\n` +
     (item.descriptionAr ? `${item.descriptionAr}\n\n` : "") +
-    "هل ترغب بتأكيد طلب هذا الفيديو؟";
+    `هل ترغب بتأكيد طلب هذا ${itemLabel}؟`;
 
   await ctx.editMessageText(text, {
     parse_mode: "Markdown",
@@ -122,16 +158,19 @@ export async function handleConfirmOrder(
   const product = item ? getProductById(item.productId) : undefined;
   const user = ctx.from;
 
-  if (!item || item.contentType !== "video" || !product || !user) {
+  if (!item || !isPurchasableContentType(item.contentType) || !product || !user) {
     await ctx.editMessageText("❌ تعذّر إتمام الطلب. حاول مرة أخرى.", {
       reply_markup: backToMainKeyboard(),
     });
     return;
   }
 
+  const itemLabel = CONTENT_TYPE_ITEM_LABEL[item.contentType];
+  const emoji = CONTENT_TYPE_EMOJI[item.contentType];
+
   if (userHasVideoAccess(user.id, item.id)) {
     await ctx.editMessageText(
-      "✅ *هذا الفيديو متاح بالفعل في حسابك.*\n\n" +
+      `✅ *هذا ${itemLabel} متاح بالفعل في حسابك.*\n\n` +
         "يمكنك فتحه من قسم «منتجاتي».",
       {
         parse_mode: "Markdown",
@@ -150,14 +189,14 @@ export async function handleConfirmOrder(
     });
 
     logger.info(
-      `New order #${order.id} from user ${user.id} for video ${item.id} (${item.productId})`
+      `New order #${order.id} from user ${user.id} for ${item.contentType} ${item.id} (${item.productId})`
     );
 
     const text =
       "✅ *تم استلام طلبك بنجاح!*\n\n" +
       `📋 رقم الطلب: \`${order.id}\`\n` +
       `📦 الحزمة: ${product.nameAr}\n` +
-      `🎬 الفيديو: ${item.titleAr}\n` +
+      `${emoji} ${itemLabel}: ${item.titleAr}\n` +
       `📌 الحالة: قيد المراجعة\n\n` +
       "سيتواصل معك فريقنا قريباً لإتمام العملية.\n" +
       "شكراً لثقتك في *3M Kids Zone*!";

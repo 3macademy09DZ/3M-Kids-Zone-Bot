@@ -43,3 +43,21 @@ export const CONTENT_TYPE_ADD_LABELS: Record<ContentType, string> = {
 };
 
 export const CONTENT_TYPES: ContentType[] = ["video", "game", "file"];
+
+export const PURCHASABLE_CONTENT_TYPES: ContentType[] = ["video", "game"];
+
+export const CONTENT_TYPE_EMOJI: Record<ContentType, string> = {
+  video: "🎬",
+  game: "🎮",
+  file: "📁",
+};
+
+export const CONTENT_TYPE_ITEM_LABEL: Record<ContentType, string> = {
+  video: "الفيديو",
+  game: "اللعبة/النشاط",
+  file: "الملف",
+};
+
+export function isPurchasableContentType(type: ContentType): boolean {
+  return type === "video" || type === "game";
+}

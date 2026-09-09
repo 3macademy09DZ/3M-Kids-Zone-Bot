@@ -1,6 +1,7 @@
 import { InlineKeyboard } from "grammy";
 import type { Order } from "../database/types";
 import { isPendingOrderStatus } from "../database/types";
+import { CONTENT_TYPE_EMOJI, type ContentType } from "../database/contentTypes";
 import { getProductById } from "../data/products";
 
 export const CB = {
@@ -58,12 +59,24 @@ export function productListKeyboard(
   return keyboard;
 }
 
+function itemButtonLabel(
+  titleAr: string,
+  contentType: ContentType = "video"
+): string {
+  return `${CONTENT_TYPE_EMOJI[contentType]} ${titleAr}`;
+}
+
 export function packageVideoListKeyboard(
-  videos: { id: number; titleAr: string }[]
+  items: { id: number; titleAr: string; contentType?: ContentType }[]
 ): InlineKeyboard {
   const keyboard = new InlineKeyboard();
-  for (const video of videos) {
-    keyboard.text(`🎬 ${video.titleAr}`, `${CB.ORDER_CONTENT}${video.id}`).row();
+  for (const item of items) {
+    keyboard
+      .text(
+        itemButtonLabel(item.titleAr, item.contentType ?? "video"),
+        `${CB.ORDER_CONTENT}${item.id}`
+      )
+      .row();
   }
   keyboard.text("↩️ رجوع", CB.ORDER).row();
   keyboard.text("↩️ القائمة الرئيسية", CB.BACK_MAIN);
@@ -150,12 +163,17 @@ export function myProductsKeyboard(productIds: string[]): InlineKeyboard {
 }
 
 export function myVideosKeyboard(
-  videos: { id: number; titleAr: string }[]
+  items: { id: number; titleAr: string; contentType?: ContentType }[]
 ): InlineKeyboard {
   const keyboard = new InlineKeyboard();
 
-  for (const video of videos) {
-    keyboard.text(`🎬 ${video.titleAr}`, `${CB.MY_CONTENT_ITEM}${video.id}`).row();
+  for (const item of items) {
+    keyboard
+      .text(
+        itemButtonLabel(item.titleAr, item.contentType ?? "video"),
+        `${CB.MY_CONTENT_ITEM}${item.id}`
+      )
+      .row();
   }
 
   keyboard.text("↩️ القائمة الرئيسية", CB.BACK_MAIN);
@@ -163,12 +181,17 @@ export function myVideosKeyboard(
 }
 
 export function myProductVideosKeyboard(
-  videos: { id: number; titleAr: string }[]
+  items: { id: number; titleAr: string; contentType?: ContentType }[]
 ): InlineKeyboard {
   const keyboard = new InlineKeyboard();
 
-  for (const video of videos) {
-    keyboard.text(`🎬 ${video.titleAr}`, `${CB.MY_CONTENT_ITEM}${video.id}`).row();
+  for (const item of items) {
+    keyboard
+      .text(
+        itemButtonLabel(item.titleAr, item.contentType ?? "video"),
+        `${CB.MY_CONTENT_ITEM}${item.id}`
+      )
+      .row();
   }
 
   keyboard.text("↩️ منتجاتي", CB.MY_PRODUCTS_BACK);
