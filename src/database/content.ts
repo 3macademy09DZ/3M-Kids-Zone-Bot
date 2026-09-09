@@ -137,6 +137,18 @@ export function getEntitledContentItemsForUser(
   return rows.map(mapRow);
 }
 
+export function updateContentItemTitle(
+  id: number,
+  titleAr: string
+): ProductContentItem | null {
+  const db = getDatabase();
+  db.prepare("UPDATE product_content SET title_ar = ? WHERE id = ?").run(
+    titleAr,
+    id
+  );
+  return getContentItemById(id);
+}
+
 export function deleteContentItem(id: number): boolean {
   const db = getDatabase();
   const result = db.prepare("DELETE FROM product_content WHERE id = ?").run(id);

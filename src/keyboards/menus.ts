@@ -24,6 +24,10 @@ export const CB = {
   ADMIN_CONTENT_PRODUCT: "admin_content_product:",
   ADMIN_CONTENT_SECTION: "admin_content_section:",
   ADMIN_CONTENT_ADD: "admin_content_add:",
+  ADMIN_CONTENT_ITEM: "admin_content_item:",
+  ADMIN_CONTENT_RENAME: "admin_content_rename:",
+  ADMIN_CONTENT_DELETE: "admin_content_delete:",
+  ADMIN_CONTENT_DELETE_CONFIRM: "admin_content_delete_confirm:",
   MY_PRODUCTS_BACK: "my_products_back",
   MY_CONTENT_SECTION: "my_content_section:",
   MY_CONTENT_ITEM: "my_content_item:",
@@ -129,6 +133,40 @@ export function adminContentAddKeyboard(
     "↩️ إلغاء",
     `${CB.ADMIN_CONTENT_SECTION}${productId}:${contentType}`
   );
+}
+
+export function adminContentItemKeyboard(item: {
+  id: number;
+  productId: string;
+  contentType: ContentType;
+}): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("✏️ تغيير الاسم", `${CB.ADMIN_CONTENT_RENAME}${item.id}`)
+    .row()
+    .text("🗑️ حذف العنصر", `${CB.ADMIN_CONTENT_DELETE}${item.id}`)
+    .row()
+    .text(
+      "↩️ رجوع",
+      `${CB.ADMIN_CONTENT_SECTION}${item.productId}:${item.contentType}`
+    );
+}
+
+export function adminContentRenameKeyboard(item: {
+  id: number;
+}): InlineKeyboard {
+  return new InlineKeyboard().text(
+    "↩️ إلغاء",
+    `${CB.ADMIN_CONTENT_ITEM}${item.id}`
+  );
+}
+
+export function adminContentDeleteConfirmKeyboard(item: {
+  id: number;
+}): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("✅ نعم، احذف", `${CB.ADMIN_CONTENT_DELETE_CONFIRM}${item.id}`)
+    .row()
+    .text("↩️ إلغاء", `${CB.ADMIN_CONTENT_ITEM}${item.id}`);
 }
 
 export function adminBackKeyboard(): InlineKeyboard {

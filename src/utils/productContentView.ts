@@ -1,6 +1,6 @@
 import { getContentItemsByProductAndType } from "../database/content";
 import {
-  CONTENT_TYPE_ADD_LABELS,
+  CONTENT_TYPE_EMOJI,
   CONTENT_TYPE_LABELS,
   CONTENT_TYPES,
   type ContentType,
@@ -167,10 +167,22 @@ export function adminSectionKeyboard(
   productId: string,
   contentType: ContentType
 ): InlineKeyboard {
-  return new InlineKeyboard()
-    .text(CONTENT_TYPE_ADD_LABELS[contentType], `${CB.ADMIN_CONTENT_ADD}${productId}:${contentType}`)
+  const items = getContentItemsByProductAndType(productId, contentType);
+  const keyboard = new InlineKeyboard();
+  const emoji = CONTENT_TYPE_EMOJI[contentType];
+
+  for (const item of items) {
+    keyboard
+      .text(`${emoji} ${item.titleAr}`, `${CB.ADMIN_CONTENT_ITEM}${item.id}`)
+      .row();
+  }
+
+  keyboard
+    .text("➕ إضافة جديد", `${CB.ADMIN_CONTENT_ADD}${productId}:${contentType}`)
     .row()
     .text("↩️ رجوع", `${CB.ADMIN_CONTENT_PRODUCT}${productId}`)
     .row()
     .text("↩️ لوحة الإدارة", CB.ADMIN_BACK);
+
+  return keyboard;
 }

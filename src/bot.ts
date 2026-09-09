@@ -28,6 +28,10 @@ import {
   handleAdminContentProduct,
   handleAdminContentSection,
   handleAdminContentAdd,
+  handleAdminContentItem,
+  handleAdminContentRename,
+  handleAdminContentDelete,
+  handleAdminContentDeleteConfirm,
   handleAdminContentUpload,
 } from "./handlers/adminContent";
 import {
@@ -91,6 +95,22 @@ export function createBot(config: EnvConfig): Bot {
     const productId = ctx.match![1];
     const contentType = ctx.match![2] as ContentType;
     await handleAdminContentAdd(ctx, productId, contentType);
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CONTENT_ITEM}(\\d+)$`), adminOnly, async (ctx) => {
+    const contentItemId = Number(ctx.match![1]);
+    await handleAdminContentItem(ctx, contentItemId);
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CONTENT_RENAME}(\\d+)$`), adminOnly, async (ctx) => {
+    const contentItemId = Number(ctx.match![1]);
+    await handleAdminContentRename(ctx, contentItemId);
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CONTENT_DELETE_CONFIRM}(\\d+)$`), adminOnly, async (ctx) => {
+    const contentItemId = Number(ctx.match![1]);
+    await handleAdminContentDeleteConfirm(ctx, contentItemId);
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CONTENT_DELETE}(\\d+)$`), adminOnly, async (ctx) => {
+    const contentItemId = Number(ctx.match![1]);
+    await handleAdminContentDelete(ctx, contentItemId);
   });
   bot.callbackQuery(CB.ADMIN_CUSTOMERS, adminOnly, handleAdminCustomers);
   bot.callbackQuery(CB.ADMIN_INVITES, adminOnly, (ctx) =>

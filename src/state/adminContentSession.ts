@@ -1,8 +1,16 @@
 import type { ContentType } from "../database/contentTypes";
 
+export type AdminContentStep =
+  | "awaiting_title"
+  | "awaiting_media"
+  | "awaiting_rename";
+
 export interface AdminContentSession {
   productId: string;
   contentType: ContentType;
+  step: AdminContentStep;
+  titleAr?: string;
+  contentItemId?: number;
 }
 
 const sessions = new Map<number, AdminContentSession>();
