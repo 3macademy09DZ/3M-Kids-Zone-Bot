@@ -1,6 +1,9 @@
 import { InlineKeyboard } from "grammy";
 import type { Order } from "../database/types";
-import { isPendingOrderStatus } from "../database/types";
+import {
+  isPaymentReviewStatus,
+  isPendingOrderStatus,
+} from "../database/types";
 import { CONTENT_TYPE_EMOJI, type ContentType } from "../database/contentTypes";
 import { getProductById } from "../data/products";
 import { formatPriceDzd } from "../utils/price";
@@ -13,6 +16,11 @@ export const CB = {
   ORDER_PRODUCT: "order_product:",
   ORDER_CONTENT: "order_content:",
   CONFIRM_ORDER: "confirm_order:",
+  PAY_METHOD_CCP: "pay_method_ccp:",
+  PAY_METHOD_REDOTPAY: "pay_method_redotpay:",
+  PAY_RESUBMIT: "pay_resubmit:",
+  ADMIN_ACCEPT_PAYMENT: "admin_accept_pay:",
+  ADMIN_REJECT_PAYMENT: "admin_reject_pay:",
   MY_PRODUCTS: "my_products",
   MY_PRODUCT: "my_product:",
   ADMIN_ORDERS: "admin_orders",
@@ -100,6 +108,22 @@ export function confirmOrderKeyboard(
     .text("↩️ رجوع", `${CB.ORDER_PRODUCT}${productId}`)
     .row()
     .text("🏠 القائمة الرئيسية", CB.BACK_MAIN);
+}
+
+export function paymentMethodKeyboard(orderId: number): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("💳 CCP / BaridiMob", `${CB.PAY_METHOD_CCP}${orderId}`)
+    .row()
+    .text("💳 RedotPay", `${CB.PAY_METHOD_REDOTPAY}${orderId}`)
+    .row()
+    .text("↩️ القائمة الرئيسية", CB.BACK_MAIN);
+}
+
+export function resubmitPaymentKeyboard(orderId: number): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("📤 إعادة إرسال إثبات الدفع", `${CB.PAY_RESUBMIT}${orderId}`)
+    .row()
+    .text("↩️ القائمة الرئيسية", CB.BACK_MAIN);
 }
 
 export function adminMenuKeyboard(): InlineKeyboard {
@@ -190,8 +214,22 @@ export function adminBackKeyboard(): InlineKeyboard {
 export function adminOrderKeyboard(order: Order): InlineKeyboard {
   const keyboard = new InlineKeyboard();
 
-  if (isPendingOrderStatus(order.status)) {
-    keyboard.text("✅ قبول الطلب", `${CB.ADMIN_APPROVE_ORDER}${order.id}`);
+  if (isPaymentReviewStatus(order.status) && order.paymentProofFileId) {
+    keyboard
+      .text("✅ قبول الدفع", `${CB.ADMIN_ACCEPT_PAYMENT}${order.id}`)
+      .row()
+      .text("❌ رفض الدفع", `${CB.ADMIN_REJECT_PAYMENT}${order.id}`);
+    return keyboard;
+  }
+
+  if (
+    (isPendingOrderStatus(order.status) || order.status === "awaiting_payment") &&
+    !order.paymentProofFileId
+  ) {
+    keyboard.text(
+      "⚠️ قبول يدوي (بدون إثبات)",
+      `${CB.ADMIN_APPROVE_ORDER}${order.id}`
+    );
   }
 
   return keyboard;

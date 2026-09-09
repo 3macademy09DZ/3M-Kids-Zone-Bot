@@ -14,6 +14,7 @@ import {
   confirmOrderKeyboard,
   openMyProductsKeyboard,
   packageVideoListKeyboard,
+  paymentMethodKeyboard,
   productListKeyboard,
 } from "../keyboards/menus";
 import { userHasVideoAccess } from "../services/contentAccess";
@@ -59,8 +60,7 @@ export async function handleOrderMenu(ctx: Context): Promise<void> {
 
   const text =
     "🛒 *طلب المحتوى*\n\n" +
-    "اختر الحزمة/القسم أولًا، ثم اختر الفيديو أو اللعبة/النشاط الذي تريد شراءه.\n\n" +
-    "_الدفع سيتم إضافته لاحقاً._";
+    "اختر الحزمة/القسم أولًا، ثم اختر الفيديو أو اللعبة/النشاط الذي تريد شراءه.";
 
   await ctx.editMessageText(text, {
     parse_mode: "Markdown",
@@ -200,18 +200,16 @@ export async function handleConfirmOrder(
     );
 
     const text =
-      "✅ *تم استلام طلبك بنجاح!*\n\n" +
+      "✅ *تم إنشاء طلبك*\n\n" +
       `📋 رقم الطلب: \`${order.id}\`\n` +
       `📦 الحزمة: ${product.nameAr}\n` +
       `${emoji} ${itemLabel}: ${item.titleAr}\n` +
-      `💰 السعر: ${formatPriceDzd(item.price)}\n` +
-      `📌 الحالة: قيد المراجعة\n\n` +
-      "سيتواصل معك فريقنا قريباً لإتمام العملية.\n" +
-      "شكراً لثقتك في *3M Kids Zone*!";
+      `💰 السعر: ${formatPriceDzd(item.price)}\n\n` +
+      "اختر طريقة الدفع لإتمام الطلب:";
 
     await ctx.editMessageText(text, {
       parse_mode: "Markdown",
-      reply_markup: backToMainKeyboard(),
+      reply_markup: paymentMethodKeyboard(order.id),
     });
   } catch (error) {
     logger.error("Failed to create order", error);

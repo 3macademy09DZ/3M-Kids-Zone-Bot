@@ -66,4 +66,24 @@ export function runMigrations(database: DatabaseSync): void {
     database.exec("ALTER TABLE product_content ADD COLUMN price INTEGER");
     logger.info("Migration: added product_content.price");
   }
+
+  if (tableExists(database, "orders")) {
+    const orderColumns: Array<{ name: string; ddl: string }> = [
+      { name: "payment_method", ddl: "ALTER TABLE orders ADD COLUMN payment_method TEXT" },
+      { name: "payment_proof_file_id", ddl: "ALTER TABLE orders ADD COLUMN payment_proof_file_id TEXT" },
+      {
+        name: "payment_proof_media_kind",
+        ddl: "ALTER TABLE orders ADD COLUMN payment_proof_media_kind TEXT",
+      },
+      { name: "payment_submitted_at", ddl: "ALTER TABLE orders ADD COLUMN payment_submitted_at TEXT" },
+      { name: "payment_reviewed_at", ddl: "ALTER TABLE orders ADD COLUMN payment_reviewed_at TEXT" },
+    ];
+
+    for (const column of orderColumns) {
+      if (!hasColumn(database, "orders", column.name)) {
+        database.exec(column.ddl);
+        logger.info(`Migration: added orders.${column.name}`);
+      }
+    }
+  }
 }
