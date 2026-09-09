@@ -1,0 +1,8 @@
+# Fallback if Nixpacks is used instead of the Dockerfile.
+# Node 18 is the Nixpacks default and cannot load node:sqlite.
+[phases.setup]
+nixPkgs = ["nodejs_22"]
+
+[variables]
+NIXPACKS_NODE_VERSION = "22"
+RAILPACK_NODE_VERSION = "22"

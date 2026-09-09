@@ -33,6 +33,27 @@ function initSchema(database: DatabaseSync): void {
 
     CREATE INDEX IF NOT EXISTS idx_orders_status
       ON orders(status);
+
+    CREATE TABLE IF NOT EXISTS product_content (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id TEXT NOT NULL,
+      content_type TEXT NOT NULL CHECK(content_type IN ('video', 'game', 'file')),
+      title_ar TEXT NOT NULL,
+      description_ar TEXT,
+      telegram_file_id TEXT NOT NULL,
+      telegram_file_unique_id TEXT,
+      media_kind TEXT NOT NULL CHECK(media_kind IN ('video', 'document', 'photo', 'animation')),
+      file_name TEXT,
+      mime_type TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_product_content_product_id
+      ON product_content(product_id);
+
+    CREATE INDEX IF NOT EXISTS idx_product_content_type
+      ON product_content(product_id, content_type);
   `);
 }
 

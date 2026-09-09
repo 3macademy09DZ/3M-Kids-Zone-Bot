@@ -1,6 +1,7 @@
 import { getDatabase } from "./db";
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import type { CreateOrderInput, Order, OrderStatus } from "./types";
+import { isPendingOrderStatus } from "./types";
 
 interface OrderRow {
   id: number;
@@ -14,13 +15,21 @@ interface OrderRow {
   notes: string | null;
 }
 
+function normalizeOrderStatus(status: string): OrderStatus {
+  const normalized = String(status).trim().toLowerCase();
+  if (normalized === "review") {
+    return "pending";
+  }
+  return normalized as OrderStatus;
+}
+
 function mapRow(row: OrderRow): Order {
   return {
     id: row.id,
     telegramUserId: row.telegram_user_id,
     telegramUsername: row.telegram_username,
     productId: row.product_id,
-    status: row.status as OrderStatus,
+    status: normalizeOrderStatus(row.status),
     createdAt: row.created_at,
     inviteLink: row.invite_link,
     inviteLinkName: row.invite_link_name,
@@ -84,10 +93,57 @@ export function getOrdersByUserId(telegramUserId: number): Order[] {
   return rows.map(mapRow);
 }
 
+const PURCHASED_STATUSES: OrderStatus[] = [
+  "confirmed",
+  "invite_sent",
+  "completed",
+];
+
+export function getPurchasedOrdersByUserId(telegramUserId: number): Order[] {
+  const db = getDatabase();
+  const placeholders = PURCHASED_STATUSES.map(() => "?").join(", ");
+  const rows = getAllRows(
+    db.prepare(`
+      SELECT * FROM orders
+      WHERE telegram_user_id = ?
+        AND status IN (${placeholders})
+      ORDER BY id DESC
+    `),
+    telegramUserId,
+    ...PURCHASED_STATUSES
+  );
+  return rows.map(mapRow);
+}
+
 export function updateOrderStatus(id: number, status: OrderStatus): Order | null {
   const db = getDatabase();
   db.prepare("UPDATE orders SET status = ? WHERE id = ?").run(status, id);
   return getOrderById(id);
+}
+
+export type ApproveOrderResult =
+  | { ok: true; order: Order; alreadyApproved: boolean }
+  | { ok: false; reason: "not_found" | "not_pending" };
+
+export function approveOrder(id: number): ApproveOrderResult {
+  const order = getOrderById(id);
+  if (!order) {
+    return { ok: false, reason: "not_found" };
+  }
+
+  if (!isPendingOrderStatus(order.status)) {
+    if (PURCHASED_STATUSES.includes(order.status)) {
+      return { ok: true, order, alreadyApproved: true };
+    }
+    return { ok: false, reason: "not_pending" };
+  }
+
+  const updated = updateOrderStatus(id, "confirmed");
+  if (!updated) {
+    return { ok: false, reason: "not_found" };
+  }
+
+  return { ok: true, order: updated, alreadyApproved: false };
 }
 
 export function updateOrderInviteLink(
