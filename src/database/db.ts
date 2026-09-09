@@ -47,6 +47,7 @@ function initSchema(database: DatabaseSync): void {
       media_kind TEXT NOT NULL CHECK(media_kind IN ('video', 'document', 'photo', 'animation')),
       file_name TEXT,
       mime_type TEXT,
+      price INTEGER,
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );

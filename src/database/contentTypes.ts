@@ -13,6 +13,7 @@ export interface ProductContentItem {
   mediaKind: MediaKind;
   fileName: string | null;
   mimeType: string | null;
+  price: number | null;
   sortOrder: number;
   createdAt: string;
 }
@@ -27,6 +28,7 @@ export interface CreateContentInput {
   mediaKind: MediaKind;
   fileName?: string | null;
   mimeType?: string | null;
+  price?: number | null;
   sortOrder?: number;
 }
 

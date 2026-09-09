@@ -25,6 +25,7 @@ import {
 } from "../keyboards/menus";
 import type { Order, OrderStatus } from "../database/types";
 import { isPendingOrderStatus } from "../database/types";
+import { formatPriceDzd } from "../utils/price";
 import { logger } from "../utils/logger";
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
@@ -54,20 +55,31 @@ function getStatusLabel(status: string): string {
   return STATUS_LABELS[normalized as OrderStatus] ?? status;
 }
 
-function getOrderItemLabel(order: Order): { emoji: string; label: string; title: string } {
+function getOrderItemLabel(order: Order): {
+  emoji: string;
+  label: string;
+  title: string;
+  price: string;
+} {
   if (order.contentId == null) {
-    return { emoji: "🎬", label: "العنصر", title: "غير محدد" };
+    return { emoji: "🎬", label: "العنصر", title: "غير محدد", price: "غير محدد" };
   }
 
   const item = getContentItemById(order.contentId);
   if (!item) {
-    return { emoji: "🎬", label: "العنصر", title: `#${order.contentId}` };
+    return {
+      emoji: "🎬",
+      label: "العنصر",
+      title: `#${order.contentId}`,
+      price: "غير محدد",
+    };
   }
 
   return {
     emoji: CONTENT_TYPE_EMOJI[item.contentType],
     label: CONTENT_TYPE_ITEM_LABEL[item.contentType],
     title: item.titleAr,
+    price: formatPriceDzd(item.price),
   };
 }
 
@@ -85,6 +97,7 @@ export function buildOrderMessage(order: Order): string {
     `👤 العميل: ${escapeHtml(username)}\n` +
     `📦 الحزمة: ${escapeHtml(productName)}\n` +
     `${item.emoji} ${escapeHtml(item.label)}: ${escapeHtml(item.title)}\n` +
+    `💰 السعر: ${escapeHtml(item.price)}\n` +
     `📅 التاريخ: ${escapeHtml(order.createdAt)}`
   );
 }

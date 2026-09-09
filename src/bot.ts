@@ -30,6 +30,7 @@ import {
   handleAdminContentAdd,
   handleAdminContentItem,
   handleAdminContentRename,
+  handleAdminContentPrice,
   handleAdminContentDelete,
   handleAdminContentDeleteConfirm,
   handleAdminContentUpload,
@@ -103,6 +104,10 @@ export function createBot(config: EnvConfig): Bot {
   bot.callbackQuery(new RegExp(`^${CB.ADMIN_CONTENT_RENAME}(\\d+)$`), adminOnly, async (ctx) => {
     const contentItemId = Number(ctx.match![1]);
     await handleAdminContentRename(ctx, contentItemId);
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CONTENT_PRICE}(\\d+)$`), adminOnly, async (ctx) => {
+    const contentItemId = Number(ctx.match![1]);
+    await handleAdminContentPrice(ctx, contentItemId);
   });
   bot.callbackQuery(new RegExp(`^${CB.ADMIN_CONTENT_DELETE_CONFIRM}(\\d+)$`), adminOnly, async (ctx) => {
     const contentItemId = Number(ctx.match![1]);
