@@ -120,6 +120,23 @@ export function getContentItemsByProductAndType(
   return rows.map(mapRow);
 }
 
+export function getEntitledContentItemsForUser(
+  telegramUserId: number
+): ProductContentItem[] {
+  const db = getDatabase();
+  const rows = getAllRows(
+    db.prepare(`
+      SELECT pc.*
+      FROM product_content pc
+      INNER JOIN video_entitlements ve ON ve.content_id = pc.id
+      WHERE ve.telegram_user_id = ?
+      ORDER BY pc.product_id ASC, pc.sort_order ASC, pc.id ASC
+    `),
+    telegramUserId
+  );
+  return rows.map(mapRow);
+}
+
 export function deleteContentItem(id: number): boolean {
   const db = getDatabase();
   const result = db.prepare("DELETE FROM product_content WHERE id = ?").run(id);

@@ -15,6 +15,7 @@ export interface Order {
   telegramUserId: number;
   telegramUsername: string | null;
   productId: string;
+  contentId: number | null;
   status: OrderStatus;
   createdAt: string;
   inviteLink: string | null;
@@ -26,5 +27,6 @@ export interface CreateOrderInput {
   telegramUserId: number;
   telegramUsername: string | null;
   productId: string;
+  contentId: number;
   notes?: string | null;
 }

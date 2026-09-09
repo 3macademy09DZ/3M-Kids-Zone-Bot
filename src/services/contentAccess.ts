@@ -1,27 +1,49 @@
-import { getPurchasedOrdersByUserId } from "../database/orders";
-import { getContentItemById } from "../database/content";
+import { getContentItemById, getEntitledContentItemsForUser } from "../database/content";
+import { userHasVideoEntitlement } from "../database/entitlements";
 import type { ProductContentItem } from "../database/contentTypes";
 
-export function userHasProductAccess(
+export function userHasVideoAccess(
+  telegramUserId: number,
+  contentId: number
+): boolean {
+  return userHasVideoEntitlement(telegramUserId, contentId);
+}
+
+export function getAccessibleVideos(
+  telegramUserId: number
+): ProductContentItem[] {
+  return getEntitledContentItemsForUser(telegramUserId).filter(
+    (item) => item.contentType === "video"
+  );
+}
+
+export function getAccessibleVideosInProduct(
   telegramUserId: number,
   productId: string
-): boolean {
-  const orders = getPurchasedOrdersByUserId(telegramUserId);
-  return orders.some((order) => order.productId === productId);
+): ProductContentItem[] {
+  return getAccessibleVideos(telegramUserId).filter(
+    (item) => item.productId === productId
+  );
 }
 
 export function getAccessibleProductIds(telegramUserId: number): string[] {
-  const orders = getPurchasedOrdersByUserId(telegramUserId);
   const seen = new Set<string>();
   const productIds: string[] = [];
 
-  for (const order of orders) {
-    if (seen.has(order.productId)) continue;
-    seen.add(order.productId);
-    productIds.push(order.productId);
+  for (const item of getAccessibleVideos(telegramUserId)) {
+    if (seen.has(item.productId)) continue;
+    seen.add(item.productId);
+    productIds.push(item.productId);
   }
 
   return productIds;
+}
+
+export function userHasEntitledVideosInProduct(
+  telegramUserId: number,
+  productId: string
+): boolean {
+  return getAccessibleVideosInProduct(telegramUserId, productId).length > 0;
 }
 
 export function userCanAccessContentItem(
@@ -33,6 +55,6 @@ export function userCanAccessContentItem(
     return { allowed: false, item: null };
   }
 
-  const allowed = userHasProductAccess(telegramUserId, item.productId);
-  return { allowed, item };
+  const allowed = userHasVideoAccess(telegramUserId, item.id);
+  return { allowed, item: allowed ? item : null };
 }

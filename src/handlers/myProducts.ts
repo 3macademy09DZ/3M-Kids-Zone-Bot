@@ -1,25 +1,65 @@
 import type { Context } from "grammy";
-import { getProductById } from "../data/products";
-import { getPurchasedOrdersByUserId } from "../database/orders";
-import type { ContentType } from "../database/contentTypes";
+import { getAllProducts, getProductById } from "../data/products";
+import type { ContentType, ProductContentItem } from "../database/contentTypes";
 import {
   backToMainKeyboard,
   myProductBackKeyboard,
-  myProductsKeyboard,
+  myProductVideosKeyboard,
+  myVideosKeyboard,
 } from "../keyboards/menus";
 import {
-  getAccessibleProductIds,
+  getAccessibleVideos,
+  getAccessibleVideosInProduct,
   userCanAccessContentItem,
-  userHasProductAccess,
+  userHasEntitledVideosInProduct,
 } from "../services/contentAccess";
-import { deliverContentItem } from "../services/contentDelivery";
+import { deliverOwnedContentItem } from "../services/contentDelivery";
 import {
-  buildProductSectionsMessage,
   buildSectionContentMessage,
-  customerProductSectionsKeyboard,
   customerSectionItemsKeyboard,
 } from "../utils/productContentView";
 import { logger } from "../utils/logger";
+
+function groupVideosByPackage(videos: ProductContentItem[]): string {
+  const groups: string[] = [];
+
+  for (const product of getAllProducts()) {
+    const packVideos = videos.filter((item) => item.productId === product.id);
+    if (packVideos.length === 0) continue;
+
+    groups.push(`*${product.nameAr}*`);
+    for (const video of packVideos) {
+      groups.push(`• ${video.titleAr}`);
+    }
+    groups.push("");
+  }
+
+  const knownIds = new Set(getAllProducts().map((product) => product.id));
+  const leftover = videos.filter((item) => !knownIds.has(item.productId));
+  if (leftover.length > 0) {
+    groups.push("*حزم أخرى*");
+    for (const video of leftover) {
+      groups.push(`• ${video.titleAr}`);
+    }
+    groups.push("");
+  }
+
+  return groups.join("\n").trimEnd();
+}
+
+function buildMyProductsText(videos: ProductContentItem[]): string {
+  return (
+    "📦 *منتجاتي*\n\n" +
+    "هذه هي الفيديوهات التي اشتريتها:\n\n" +
+    groupVideosByPackage(videos) +
+    "\n\n_اضغط على فيديو لفتحه:_"
+  );
+}
+
+export async function handleMyProductsOpen(ctx: Context): Promise<void> {
+  await ctx.answerCallbackQuery();
+  await handleMyProducts(ctx);
+}
 
 export async function handleMyProducts(ctx: Context): Promise<void> {
   const user = ctx.from;
@@ -29,13 +69,13 @@ export async function handleMyProducts(ctx: Context): Promise<void> {
   }
 
   try {
-    const productIds = getAccessibleProductIds(user.id);
+    const videos = getAccessibleVideos(user.id);
 
-    if (productIds.length === 0) {
+    if (videos.length === 0) {
       await ctx.reply(
         "📦 *منتجاتي*\n\n" +
-          "لا توجد لديك منتجات مشتراة حالياً.\n\n" +
-          "يمكنك طلب المحتوى من القائمة الرئيسية عبر /start",
+          "لا توجد لديك فيديوهات مشتراة حالياً.\n\n" +
+          "يمكنك طلب فيديو من القائمة الرئيسية عبر /start",
         {
           parse_mode: "Markdown",
           reply_markup: backToMainKeyboard(),
@@ -44,23 +84,12 @@ export async function handleMyProducts(ctx: Context): Promise<void> {
       return;
     }
 
-    const lines = productIds.map((productId) => {
-      const product = getProductById(productId);
-      return `• ${product?.nameAr ?? productId}`;
+    await ctx.reply(buildMyProductsText(videos), {
+      parse_mode: "Markdown",
+      reply_markup: myVideosKeyboard(videos),
     });
-
-    await ctx.reply(
-      "📦 *منتجاتي*\n\n" +
-        "هذه هي المنتجات التي اشتريتها:\n\n" +
-        lines.join("\n") +
-        "\n\n_اضغط على منتج لفتح محتواه:_",
-      {
-        parse_mode: "Markdown",
-        reply_markup: myProductsKeyboard(productIds),
-      }
-    );
   } catch (error) {
-    logger.error("Failed to fetch purchased products", error);
+    logger.error("Failed to fetch purchased videos", error);
     await ctx.reply(
       "❌ حدث خطأ أثناء جلب منتجاتك. يُرجى المحاولة لاحقاً.",
       { reply_markup: backToMainKeyboard() }
@@ -73,11 +102,11 @@ export async function handleMyProductsBack(ctx: Context): Promise<void> {
   const user = ctx.from;
   if (!user) return;
 
-  const productIds = getAccessibleProductIds(user.id);
+  const videos = getAccessibleVideos(user.id);
 
-  if (productIds.length === 0) {
+  if (videos.length === 0) {
     await ctx.editMessageText(
-      "📦 *منتجاتي*\n\n" + "لا توجد لديك منتجات مشتراة حالياً.",
+      "📦 *منتجاتي*\n\n" + "لا توجد لديك فيديوهات مشتراة حالياً.",
       {
         parse_mode: "Markdown",
         reply_markup: backToMainKeyboard(),
@@ -86,21 +115,10 @@ export async function handleMyProductsBack(ctx: Context): Promise<void> {
     return;
   }
 
-  const lines = productIds.map((productId) => {
-    const product = getProductById(productId);
-    return `• ${product?.nameAr ?? productId}`;
+  await ctx.editMessageText(buildMyProductsText(videos), {
+    parse_mode: "Markdown",
+    reply_markup: myVideosKeyboard(videos),
   });
-
-  await ctx.editMessageText(
-    "📦 *منتجاتي*\n\n" +
-      "هذه هي المنتجات التي اشتريتها:\n\n" +
-      lines.join("\n") +
-      "\n\n_اضغط على منتج لفتح محتواه:_",
-    {
-      parse_mode: "Markdown",
-      reply_markup: myProductsKeyboard(productIds),
-    }
-  );
 }
 
 export async function handleMyProductOpen(
@@ -113,9 +131,11 @@ export async function handleMyProductOpen(
     return;
   }
 
-  if (!userHasProductAccess(user.id, productId)) {
+  const videos = getAccessibleVideosInProduct(user.id, productId);
+
+  if (!userHasEntitledVideosInProduct(user.id, productId) || videos.length === 0) {
     await ctx.answerCallbackQuery({
-      text: "⛔ هذا المنتج غير متاح لديك.",
+      text: "⛔ لا توجد فيديوهات متاحة لك في هذه الحزمة.",
       show_alert: true,
     });
     return;
@@ -125,22 +145,24 @@ export async function handleMyProductOpen(
 
   const product = getProductById(productId);
   if (!product) {
-    await ctx.editMessageText("❌ المنتج غير موجود.", {
+    await ctx.editMessageText("❌ الحزمة غير موجودة.", {
       reply_markup: myProductBackKeyboard(),
     });
     return;
   }
 
-  const text = buildProductSectionsMessage(
-    product.nameAr,
-    product.descriptionAr,
-    productId
-  );
+  const lines = videos.map((video) => `• ${video.titleAr}`);
 
-  await ctx.editMessageText(text, {
-    parse_mode: "Markdown",
-    reply_markup: customerProductSectionsKeyboard(productId),
-  });
+  await ctx.editMessageText(
+    `📂 *${product.nameAr}*\n\n` +
+      "الفيديوهات المتاحة لك في هذه الحزمة:\n\n" +
+      lines.join("\n") +
+      "\n\n_اضغط على فيديو لفتحه:_",
+    {
+      parse_mode: "Markdown",
+      reply_markup: myProductVideosKeyboard(videos),
+    }
+  );
 }
 
 export async function handleMyContentSection(
@@ -154,9 +176,13 @@ export async function handleMyContentSection(
     return;
   }
 
-  if (!userHasProductAccess(user.id, productId)) {
+  const entitled = getAccessibleVideosInProduct(user.id, productId).filter(
+    (item) => item.contentType === contentType
+  );
+
+  if (entitled.length === 0) {
     await ctx.answerCallbackQuery({
-      text: "⛔ هذا المنتج غير متاح لديك.",
+      text: "⛔ لا يوجد محتوى متاح لك في هذا القسم.",
       show_alert: true,
     });
     return;
@@ -166,7 +192,7 @@ export async function handleMyContentSection(
 
   const product = getProductById(productId);
   if (!product) {
-    await ctx.editMessageText("❌ المنتج غير موجود.", {
+    await ctx.editMessageText("❌ الحزمة غير موجودة.", {
       reply_markup: myProductBackKeyboard(),
     });
     return;
@@ -175,12 +201,12 @@ export async function handleMyContentSection(
   const text = buildSectionContentMessage(
     product.nameAr,
     contentType,
-    productId
+    entitled
   );
 
   await ctx.editMessageText(text, {
     parse_mode: "Markdown",
-    reply_markup: customerSectionItemsKeyboard(productId, contentType),
+    reply_markup: customerSectionItemsKeyboard(productId, contentType, entitled),
   });
 }
 
@@ -198,19 +224,30 @@ export async function handleMyContentItemOpen(
 
   if (!allowed || !item) {
     await ctx.answerCallbackQuery({
-      text: "⛔ لا يمكنك الوصول إلى هذا المحتوى.",
+      text: "⛔ هذا الفيديو غير متاح في حسابك. يجب شراؤه أولًا.",
       show_alert: true,
     });
     return;
   }
 
-  await ctx.answerCallbackQuery({ text: "⏳ جاري إرسال المحتوى…" });
+  await ctx.answerCallbackQuery({ text: "⏳ جاري إرسال الفيديو…" });
 
   try {
     const chatId = ctx.chat?.id ?? user.id;
-    await deliverContentItem(ctx.api, chatId, item);
+    const result = await deliverOwnedContentItem(
+      ctx.api,
+      chatId,
+      user.id,
+      item
+    );
+
+    if (result === "denied") {
+      await ctx.reply(
+        "⛔ هذا الفيديو غير متاح في حسابك. يمكنك طلبه من «🛒 طلب المحتوى»."
+      );
+    }
   } catch (error) {
     logger.error(`Failed to deliver content item #${contentItemId}`, error);
-    await ctx.reply("❌ تعذّر إرسال المحتوى. حاول مرة أخرى لاحقاً.");
+    await ctx.reply("❌ تعذّر إرسال الفيديو. حاول مرة أخرى لاحقاً.");
   }
 }
