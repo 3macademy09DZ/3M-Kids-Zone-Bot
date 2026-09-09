@@ -1,7 +1,7 @@
 import { getDatabase } from "./db";
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import { grantVideoEntitlement } from "./entitlements";
-import type { CreateOrderInput, Order, OrderStatus } from "./types";
+import type { CreateOrderInput, Order, OrderStatus, PaymentMethod } from "./types";
 import { isPendingOrderStatus } from "./types";
 
 interface OrderRow {
@@ -15,6 +15,11 @@ interface OrderRow {
   invite_link: string | null;
   invite_link_name: string | null;
   notes: string | null;
+  payment_method: string | null;
+  payment_proof_file_id: string | null;
+  payment_proof_media_kind: string | null;
+  payment_submitted_at: string | null;
+  payment_reviewed_at: string | null;
 }
 
 function normalizeOrderStatus(status: string): OrderStatus {
@@ -23,6 +28,22 @@ function normalizeOrderStatus(status: string): OrderStatus {
     return "pending";
   }
   return normalized as OrderStatus;
+}
+
+function normalizePaymentMethod(value: string | null): PaymentMethod | null {
+  if (value === "ccp" || value === "redotpay") {
+    return value;
+  }
+  return null;
+}
+
+function normalizeProofKind(
+  value: string | null
+): "photo" | "document" | null {
+  if (value === "photo" || value === "document") {
+    return value;
+  }
+  return null;
 }
 
 function mapRow(row: OrderRow): Order {
@@ -37,6 +58,11 @@ function mapRow(row: OrderRow): Order {
     inviteLink: row.invite_link,
     inviteLinkName: row.invite_link_name,
     notes: row.notes,
+    paymentMethod: normalizePaymentMethod(row.payment_method),
+    paymentProofFileId: row.payment_proof_file_id ?? null,
+    paymentProofMediaKind: normalizeProofKind(row.payment_proof_media_kind),
+    paymentSubmittedAt: row.payment_submitted_at ?? null,
+    paymentReviewedAt: row.payment_reviewed_at ?? null,
   };
 }
 
@@ -57,8 +83,8 @@ function getAllRows(
 export function createOrder(input: CreateOrderInput): Order {
   const db = getDatabase();
   const stmt = db.prepare(`
-    INSERT INTO orders (telegram_user_id, telegram_username, product_id, content_id, notes)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO orders (telegram_user_id, telegram_username, product_id, content_id, notes, status)
+    VALUES (?, ?, ?, ?, ?, 'awaiting_payment')
   `);
 
   const result = stmt.run(
@@ -98,6 +124,7 @@ export function getOrdersByUserId(telegramUserId: number): Order[] {
 }
 
 const PURCHASED_STATUSES: OrderStatus[] = [
+  "approved",
   "confirmed",
   "invite_sent",
   "completed",
@@ -125,9 +152,119 @@ export function updateOrderStatus(id: number, status: OrderStatus): Order | null
   return getOrderById(id);
 }
 
+export function setOrderPaymentMethod(
+  id: number,
+  paymentMethod: PaymentMethod
+): Order | null {
+  const db = getDatabase();
+  db.prepare("UPDATE orders SET payment_method = ? WHERE id = ?").run(
+    paymentMethod,
+    id
+  );
+  return getOrderById(id);
+}
+
+export function submitOrderPaymentProof(
+  id: number,
+  fileId: string,
+  mediaKind: "photo" | "document"
+): Order | null {
+  const db = getDatabase();
+  db.prepare(
+    `
+      UPDATE orders
+      SET payment_proof_file_id = ?,
+          payment_proof_media_kind = ?,
+          payment_submitted_at = datetime('now'),
+          status = 'payment_pending_review'
+      WHERE id = ?
+    `
+  ).run(fileId, mediaKind, id);
+  return getOrderById(id);
+}
+
 export type ApproveOrderResult =
   | { ok: true; order: Order; alreadyApproved: boolean }
-  | { ok: false; reason: "not_found" | "not_pending" };
+  | { ok: false; reason: "not_found" | "not_pending" | "missing_proof" };
+
+function grantApprovedOrder(order: Order): Order | null {
+  const db = getDatabase();
+  db.prepare(
+    `
+      UPDATE orders
+      SET status = 'approved',
+          payment_reviewed_at = datetime('now')
+      WHERE id = ?
+    `
+  ).run(order.id);
+
+  const updated = getOrderById(order.id);
+  if (updated?.contentId != null) {
+    grantVideoEntitlement(updated.telegramUserId, updated.contentId, updated.id);
+  }
+  return updated;
+}
+
+export function approvePayment(id: number): ApproveOrderResult {
+  const order = getOrderById(id);
+  if (!order) {
+    return { ok: false, reason: "not_found" };
+  }
+
+  if (PURCHASED_STATUSES.includes(order.status)) {
+    if (order.contentId != null) {
+      grantVideoEntitlement(order.telegramUserId, order.contentId, order.id);
+    }
+    return { ok: true, order, alreadyApproved: true };
+  }
+
+  if (order.status !== "payment_pending_review") {
+    return { ok: false, reason: "not_pending" };
+  }
+
+  if (!order.paymentProofFileId) {
+    return { ok: false, reason: "missing_proof" };
+  }
+
+  const updated = grantApprovedOrder(order);
+  if (!updated) {
+    return { ok: false, reason: "not_found" };
+  }
+
+  return { ok: true, order: updated, alreadyApproved: false };
+}
+
+export function rejectPayment(id: number): ApproveOrderResult {
+  const order = getOrderById(id);
+  if (!order) {
+    return { ok: false, reason: "not_found" };
+  }
+
+  if (PURCHASED_STATUSES.includes(order.status)) {
+    return { ok: true, order, alreadyApproved: true };
+  }
+
+  if (order.status !== "payment_pending_review") {
+    return { ok: false, reason: "not_pending" };
+  }
+
+  const db = getDatabase();
+  db.prepare(
+    `
+      UPDATE orders
+      SET status = 'rejected_payment',
+          payment_reviewed_at = datetime('now')
+      WHERE id = ?
+    `
+  ).run(id);
+
+  const updated = getOrderById(id);
+  if (!updated) {
+    return { ok: false, reason: "not_found" };
+  }
+
+  return { ok: true, order: updated, alreadyApproved: false };
+}
 
 export function approveOrder(id: number): ApproveOrderResult {
   const order = getOrderById(id);
@@ -135,7 +272,7 @@ export function approveOrder(id: number): ApproveOrderResult {
     return { ok: false, reason: "not_found" };
   }
 
-  if (!isPendingOrderStatus(order.status)) {
+  if (!isPendingOrderStatus(order.status) && order.status !== "awaiting_payment") {
     if (PURCHASED_STATUSES.includes(order.status)) {
       if (order.contentId != null) {
         grantVideoEntitlement(order.telegramUserId, order.contentId, order.id);
@@ -145,13 +282,9 @@ export function approveOrder(id: number): ApproveOrderResult {
     return { ok: false, reason: "not_pending" };
   }
 
-  const updated = updateOrderStatus(id, "confirmed");
+  const updated = grantApprovedOrder(order);
   if (!updated) {
     return { ok: false, reason: "not_found" };
-  }
-
-  if (updated.contentId != null) {
-    grantVideoEntitlement(updated.telegramUserId, updated.contentId, updated.id);
   }
 
   return { ok: true, order: updated, alreadyApproved: false };

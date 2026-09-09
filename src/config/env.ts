@@ -7,6 +7,10 @@ export interface EnvConfig {
   adminTelegramId: number;
   channelId: string | undefined;
   contactUsername: string | undefined;
+  ccpAccountInfo: string | undefined;
+  baridimobRip: string | undefined;
+  paymentAccountName: string | undefined;
+  redotpayPaymentInfo: string | undefined;
 }
 
 function requireEnv(name: string): string {
@@ -31,12 +35,20 @@ export function loadConfig(): EnvConfig {
 
   const channelId = process.env.CHANNEL_ID?.trim() || undefined;
   const contactUsername = process.env.CONTACT_USERNAME?.trim() || undefined;
+  const ccpAccountInfo = process.env.CCP_ACCOUNT_INFO?.trim() || undefined;
+  const baridimobRip = process.env.BARIDIMOB_RIP?.trim() || undefined;
+  const paymentAccountName = process.env.PAYMENT_ACCOUNT_NAME?.trim() || undefined;
+  const redotpayPaymentInfo = process.env.REDOTPAY_PAYMENT_INFO?.trim() || undefined;
 
   return {
     botToken,
     adminTelegramId,
     channelId,
     contactUsername,
+    ccpAccountInfo,
+    baridimobRip,
+    paymentAccountName,
+    redotpayPaymentInfo,
   };
 }
 

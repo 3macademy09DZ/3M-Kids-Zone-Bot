@@ -4,10 +4,12 @@ import { isChannelConfigured } from "../config/env";
 import type { EnvConfig } from "../config/env";
 import {
   approveOrder,
+  approvePayment,
   getAllOrders,
   getOrderById,
   getOrdersWithInviteLinks,
   getUniqueCustomerIds,
+  rejectPayment,
 } from "../database/orders";
 import { getContentItemById } from "../database/content";
 import {
@@ -20,16 +22,26 @@ import {
   adminBackKeyboard,
   adminMenuKeyboard,
   adminOrderKeyboard,
-  buildApproveOrderCallback,
   openMyProductsKeyboard,
 } from "../keyboards/menus";
 import type { Order, OrderStatus } from "../database/types";
-import { isPendingOrderStatus } from "../database/types";
+import {
+  isPaymentReviewStatus,
+  isPendingOrderStatus,
+} from "../database/types";
+import {
+  buildRejectedPaymentMessage,
+  PAYMENT_METHOD_LABELS,
+} from "./payment";
 import { formatPriceDzd } from "../utils/price";
 import { logger } from "../utils/logger";
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   pending: "⏳ قيد المراجعة",
+  awaiting_payment: "💳 بانتظار الدفع",
+  payment_pending_review: "⏳ بانتظار التحقق من الدفع",
+  rejected_payment: "❌ رفض الدفع",
+  approved: "✅ تمت الموافقة",
   confirmed: "✅ تمت الموافقة",
   invite_sent: "🔗 تم إرسال الرابط",
   completed: "✔️ مكتمل",
@@ -89,15 +101,22 @@ export function buildOrderMessage(order: Order): string {
   const item = getOrderItemLabel(order);
   const username = order.telegramUsername
     ? `@${order.telegramUsername}`
-    : `ID:${order.telegramUserId}`;
+    : "بدون اسم مستخدم";
+  const paymentMethod = order.paymentMethod
+    ? PAYMENT_METHOD_LABELS[order.paymentMethod]
+    : "غير محدد";
+  const proofLabel = order.paymentProofFileId ? "مرفق أدناه" : "غير موجود";
 
   return (
     `📦 <b>طلب #${order.id}</b>\n\n` +
     `📌 الحالة: ${escapeHtml(getStatusLabel(order.status))}\n` +
     `👤 العميل: ${escapeHtml(username)}\n` +
+    `🆔 Telegram ID: <code>${order.telegramUserId}</code>\n` +
     `📦 الحزمة: ${escapeHtml(productName)}\n` +
     `${item.emoji} ${escapeHtml(item.label)}: ${escapeHtml(item.title)}\n` +
     `💰 السعر: ${escapeHtml(item.price)}\n` +
+    `💳 طريقة الدفع: ${escapeHtml(paymentMethod)}\n` +
+    `🧾 إثبات الدفع: ${escapeHtml(proofLabel)}\n` +
     `📅 التاريخ: ${escapeHtml(order.createdAt)}`
   );
 }
@@ -109,23 +128,28 @@ async function sendOrderMessage(ctx: Context, order: Order): Promise<void> {
     return;
   }
 
-  const replyMarkup = isPendingOrderStatus(order.status)
-    ? {
-        inline_keyboard: [
-          [
-            {
-              text: "✅ قبول الطلب",
-              callback_data: buildApproveOrderCallback(order.id),
-            },
-          ],
-        ],
-      }
-    : undefined;
+  const keyboard = adminOrderKeyboard(order);
 
   await ctx.api.sendMessage(chatId, buildOrderMessage(order), {
     parse_mode: "HTML",
-    reply_markup: replyMarkup,
+    reply_markup: keyboard.inline_keyboard.length > 0 ? keyboard : undefined,
   });
+
+  if (order.paymentProofFileId) {
+    try {
+      if (order.paymentProofMediaKind === "document") {
+        await ctx.api.sendDocument(chatId, order.paymentProofFileId, {
+          caption: `🧾 إثبات الدفع — طلب #${order.id}`,
+        });
+      } else {
+        await ctx.api.sendPhoto(chatId, order.paymentProofFileId, {
+          caption: `🧾 إثبات الدفع — طلب #${order.id}`,
+        });
+      }
+    } catch (error) {
+      logger.error(`Failed to send payment proof for order #${order.id}`, error);
+    }
+  }
 }
 
 export async function handleAdminCommand(ctx: Context): Promise<void> {
@@ -155,14 +179,17 @@ export async function handleAdminOrders(ctx: Context): Promise<void> {
     return;
   }
 
-  const pendingOrders = orders.filter((order) =>
-    isPendingOrderStatus(order.status)
+  const pendingOrders = orders.filter(
+    (order) =>
+      isPaymentReviewStatus(order.status) ||
+      isPendingOrderStatus(order.status) ||
+      order.status === "awaiting_payment"
   );
 
   await ctx.editMessageText(
     `📦 *الطلبات* (${orders.length})\n\n` +
       (pendingOrders.length > 0
-        ? `_يوجد ${pendingOrders.length} طلب/طلبات بانتظار الموافقة._\n\n`
+        ? `_يوجد ${pendingOrders.length} طلب/طلبات بانتظار المراجعة._\n\n`
         : "") +
       "_يتم عرض الطلبات في الرسائل التالية:_",
     {
@@ -172,8 +199,18 @@ export async function handleAdminOrders(ctx: Context): Promise<void> {
   );
 
   const pendingFirst = [
-    ...orders.filter((order) => isPendingOrderStatus(order.status)),
-    ...orders.filter((order) => !isPendingOrderStatus(order.status)),
+    ...orders.filter((order) => isPaymentReviewStatus(order.status)),
+    ...orders.filter(
+      (order) =>
+        !isPaymentReviewStatus(order.status) &&
+        (isPendingOrderStatus(order.status) || order.status === "awaiting_payment")
+    ),
+    ...orders.filter(
+      (order) =>
+        !isPaymentReviewStatus(order.status) &&
+        !isPendingOrderStatus(order.status) &&
+        order.status !== "awaiting_payment"
+    ),
   ];
 
   for (const order of pendingFirst.slice(0, 20)) {
@@ -211,11 +248,10 @@ export async function handleAdminApproveOrder(
     await ctx.answerCallbackQuery({ text: "✅ تم قبول الطلب." });
 
     try {
-      const approvedItem = getOrderItemLabel(result.order);
       await ctx.api.sendMessage(
         result.order.telegramUserId,
-        "✅ تمت الموافقة على طلبك\n" +
-          `${approvedItem.emoji} أصبح ${approvedItem.label} متاحًا لك الآن`,
+        "✅ تم تأكيد الدفع والموافقة على طلبك\n" +
+          "أصبح المحتوى متاحًا الآن",
         {
           reply_markup: openMyProductsKeyboard(),
         }
@@ -234,6 +270,107 @@ export async function handleAdminApproveOrder(
   await ctx.editMessageText(buildOrderMessage(order), {
     parse_mode: "HTML",
     reply_markup: keyboard.inline_keyboard.length > 0 ? keyboard : new InlineKeyboard(),
+  });
+}
+
+export async function handleAdminAcceptPayment(
+  ctx: Context,
+  orderId: number
+): Promise<void> {
+  const result = approvePayment(orderId);
+
+  if (!result.ok) {
+    await ctx.answerCallbackQuery({
+      text:
+        result.reason === "missing_proof"
+          ? "❌ لا يوجد إثبات دفع. استخدم القبول اليدوي إن لزم."
+          : result.reason === "not_found"
+            ? "❌ الطلب غير موجود."
+            : "❌ لا يمكن قبول هذا الدفع.",
+      show_alert: true,
+    });
+    return;
+  }
+
+  if (result.alreadyApproved) {
+    await ctx.answerCallbackQuery({
+      text: "ℹ️ تم قبول هذا الطلب مسبقاً.",
+      show_alert: true,
+    });
+  } else {
+    await ctx.answerCallbackQuery({ text: "✅ تم قبول الدفع." });
+
+    try {
+      await ctx.api.sendMessage(
+        result.order.telegramUserId,
+        "✅ تم تأكيد الدفع والموافقة على طلبك\n" +
+          "أصبح المحتوى متاحًا الآن",
+        {
+          reply_markup: openMyProductsKeyboard(),
+        }
+      );
+    } catch (error) {
+      logger.error(
+        `Failed to notify customer ${result.order.telegramUserId} about payment approval`,
+        error
+      );
+    }
+  }
+
+  const order = getOrderById(orderId) ?? result.order;
+  const keyboard = adminOrderKeyboard(order);
+  await ctx.editMessageText(buildOrderMessage(order), {
+    parse_mode: "HTML",
+    reply_markup:
+      keyboard.inline_keyboard.length > 0 ? keyboard : new InlineKeyboard(),
+  });
+}
+
+export async function handleAdminRejectPayment(
+  ctx: Context,
+  orderId: number,
+  config: EnvConfig
+): Promise<void> {
+  const result = rejectPayment(orderId);
+
+  if (!result.ok) {
+    await ctx.answerCallbackQuery({
+      text:
+        result.reason === "not_found"
+          ? "❌ الطلب غير موجود."
+          : "❌ لا يمكن رفض هذا الدفع.",
+      show_alert: true,
+    });
+    return;
+  }
+
+  if (result.alreadyApproved) {
+    await ctx.answerCallbackQuery({
+      text: "ℹ️ هذا الطلب مقبول مسبقاً ولا يمكن رفضه.",
+      show_alert: true,
+    });
+  } else {
+    await ctx.answerCallbackQuery({ text: "❌ تم رفض الدفع." });
+
+    try {
+      const rejected = buildRejectedPaymentMessage(config, result.order.id);
+      await ctx.api.sendMessage(result.order.telegramUserId, rejected.text, {
+        reply_markup: rejected.keyboard,
+      });
+    } catch (error) {
+      logger.error(
+        `Failed to notify customer ${result.order.telegramUserId} about payment rejection`,
+        error
+      );
+    }
+  }
+
+  const order = getOrderById(orderId) ?? result.order;
+  const keyboard = adminOrderKeyboard(order);
+  await ctx.editMessageText(buildOrderMessage(order), {
+    parse_mode: "HTML",
+    reply_markup:
+      keyboard.inline_keyboard.length > 0 ? keyboard : new InlineKeyboard(),
   });
 }
 
@@ -317,12 +454,19 @@ export async function handleAdminSettings(
     : "❌ غير مُعدّ";
   const contactStatus = config.contactUsername ? "✅ مُعدّ" : "❌ غير مُعدّ";
   const inviteStatus = inviteLinkService.isReady() ? "✅ جاهز" : "⚠️ غير جاهز";
+  const ccpStatus =
+    config.ccpAccountInfo || config.baridimobRip || config.paymentAccountName
+      ? "✅ مُعدّ"
+      : "❌ غير مُعدّ";
+  const redotStatus = config.redotpayPaymentInfo ? "✅ مُعدّ" : "❌ غير مُعدّ";
 
   const text =
     "⚙️ *الإعدادات*\n\n" +
     `📢 القناة (CHANNEL_ID): ${channelStatus}\n` +
     `📞 التواصل (CONTACT_USERNAME): ${contactStatus}\n` +
     `🔗 روابط الدعوة: ${inviteStatus}\n` +
+    `💳 CCP / BaridiMob: ${ccpStatus}\n` +
+    `💳 RedotPay: ${redotStatus}\n` +
     `👤 المسؤول: \`${config.adminTelegramId}\`\n\n` +
     "_تعديل الإعدادات من ملف .env — قريباً: لوحة إعدادات داخل البوت._";
 

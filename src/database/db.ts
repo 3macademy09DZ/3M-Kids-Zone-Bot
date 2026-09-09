@@ -27,7 +27,12 @@ function initSchema(database: DatabaseSync): void {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       invite_link TEXT,
       invite_link_name TEXT,
-      notes TEXT
+      notes TEXT,
+      payment_method TEXT,
+      payment_proof_file_id TEXT,
+      payment_proof_media_kind TEXT,
+      payment_submitted_at TEXT,
+      payment_reviewed_at TEXT
     );
 
     CREATE INDEX IF NOT EXISTS idx_orders_telegram_user_id

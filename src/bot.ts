@@ -1,7 +1,7 @@
 import { Bot } from "grammy";
 import type { EnvConfig } from "./config/env";
 import { CB } from "./keyboards/menus";
-import { createAdminMiddleware } from "./middleware/adminAuth";
+import { createAdminMiddleware, isAdmin } from "./middleware/adminAuth";
 import { InviteLinkService } from "./services/inviteLink";
 import { logger } from "./utils/logger";
 import { getDatabase } from "./database/db";
@@ -19,10 +19,17 @@ import {
   handleAdminBack,
   handleAdminOrders,
   handleAdminApproveOrder,
+  handleAdminAcceptPayment,
+  handleAdminRejectPayment,
   handleAdminCustomers,
   handleAdminInvites,
   handleAdminSettings,
 } from "./handlers/admin";
+import {
+  handleCustomerPaymentProof,
+  handleResubmitPayment,
+  handleSelectPaymentMethod,
+} from "./handlers/payment";
 import {
   handleAdminContentMenu,
   handleAdminContentProduct,
@@ -76,11 +83,32 @@ export function createBot(config: EnvConfig): Bot {
     await handleConfirmOrder(ctx, contentId);
   });
 
+  bot.callbackQuery(new RegExp(`^${CB.PAY_METHOD_CCP}(\\d+)$`), async (ctx) => {
+    const orderId = Number(ctx.match![1]);
+    await handleSelectPaymentMethod(ctx, orderId, "ccp", config);
+  });
+  bot.callbackQuery(new RegExp(`^${CB.PAY_METHOD_REDOTPAY}(\\d+)$`), async (ctx) => {
+    const orderId = Number(ctx.match![1]);
+    await handleSelectPaymentMethod(ctx, orderId, "redotpay", config);
+  });
+  bot.callbackQuery(new RegExp(`^${CB.PAY_RESUBMIT}(\\d+)$`), async (ctx) => {
+    const orderId = Number(ctx.match![1]);
+    await handleResubmitPayment(ctx, orderId, config);
+  });
+
   bot.callbackQuery(CB.ADMIN_BACK, adminOnly, handleAdminBack);
   bot.callbackQuery(CB.ADMIN_ORDERS, adminOnly, handleAdminOrders);
   bot.callbackQuery(new RegExp(`^${CB.ADMIN_APPROVE_ORDER}(\\d+)$`), adminOnly, async (ctx) => {
     const orderId = Number(ctx.match![1]);
     await handleAdminApproveOrder(ctx, orderId);
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_ACCEPT_PAYMENT}(\\d+)$`), adminOnly, async (ctx) => {
+    const orderId = Number(ctx.match![1]);
+    await handleAdminAcceptPayment(ctx, orderId);
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_REJECT_PAYMENT}(\\d+)$`), adminOnly, async (ctx) => {
+    const orderId = Number(ctx.match![1]);
+    await handleAdminRejectPayment(ctx, orderId, config);
   });
   bot.callbackQuery(CB.ADMIN_CONTENT, adminOnly, handleAdminContentMenu);
   bot.callbackQuery(new RegExp(`^${CB.ADMIN_CONTENT_PRODUCT}(.+)$`), adminOnly, async (ctx) => {
@@ -141,11 +169,20 @@ export function createBot(config: EnvConfig): Bot {
     await handleMyContentItemOpen(ctx, contentItemId);
   });
 
-  bot.on("message", adminOnly, async (ctx, next) => {
-    const handled = await handleAdminContentUpload(ctx);
-    if (!handled) {
-      await next();
+  bot.on("message", async (ctx, next) => {
+    const handledProof = await handleCustomerPaymentProof(ctx);
+    if (handledProof) {
+      return;
     }
+
+    if (isAdmin(ctx, config.adminTelegramId)) {
+      const handledUpload = await handleAdminContentUpload(ctx);
+      if (handledUpload) {
+        return;
+      }
+    }
+
+    await next();
   });
 
   bot.catch((err) => {
