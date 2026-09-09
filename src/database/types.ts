@@ -5,6 +5,11 @@ export type OrderStatus =
   | "completed"
   | "cancelled";
 
+export function isPendingOrderStatus(status: string): boolean {
+  const normalized = status.trim().toLowerCase();
+  return normalized === "pending" || normalized === "review";
+}
+
 export interface Order {
   id: number;
   telegramUserId: number;
