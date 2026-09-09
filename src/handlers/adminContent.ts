@@ -5,6 +5,7 @@ import {
   createContentItem,
   deleteContentItem,
   getContentItemById,
+  updateContentItemPrice,
   updateContentItemTitle,
 } from "../database/content";
 import {
@@ -19,6 +20,7 @@ import {
   adminContentAddKeyboard,
   adminContentDeleteConfirmKeyboard,
   adminContentItemKeyboard,
+  adminContentPriceKeyboard,
   adminContentProductKeyboard,
   adminContentRenameKeyboard,
 } from "../keyboards/menus";
@@ -34,6 +36,11 @@ import {
   buildAdminSectionMessage,
 } from "../utils/productContentView";
 import { logger } from "../utils/logger";
+import {
+  formatPriceDzd,
+  INVALID_PRICE_MESSAGE,
+  parsePriceDzd,
+} from "../utils/price";
 
 interface ExtractedMedia {
   telegramFileId: string;
@@ -130,6 +137,10 @@ function getNamePrompt(contentType: ContentType): string {
   return `✏️ أرسل الآن *اسم* ${label} الجديد كنص.`;
 }
 
+function getPricePrompt(): string {
+  return "💰 أرسل الآن *السعر* بالدينار الجزائري.\nمثال: `500`";
+}
+
 function getUploadPrompt(contentType: ContentType): string {
   switch (contentType) {
     case "video":
@@ -155,12 +166,14 @@ function getUnsupportedMediaMessage(contentType: ContentType): string {
 function buildAdminItemMessage(
   productName: string,
   contentType: ContentType,
-  titleAr: string
+  titleAr: string,
+  price: number | null
 ): string {
   return (
     `📚 *${productName}*\n` +
     `${CONTENT_TYPE_LABELS[contentType]}\n\n` +
-    `${CONTENT_TYPE_EMOJI[contentType]} *${titleAr}*\n\n` +
+    `${CONTENT_TYPE_EMOJI[contentType]} *${titleAr}*\n` +
+    `💰 السعر: ${formatPriceDzd(price)}\n\n` +
     "_اختر إجراءً لإدارة هذا العنصر:_"
   );
 }
@@ -286,7 +299,8 @@ export async function handleAdminContentItem(
     buildAdminItemMessage(
       product?.nameAr ?? item.productId,
       item.contentType,
-      item.titleAr
+      item.titleAr,
+      item.price
     ),
     {
       parse_mode: "Markdown",
@@ -324,6 +338,40 @@ export async function handleAdminContentRename(
     {
       parse_mode: "Markdown",
       reply_markup: adminContentRenameKeyboard(item),
+    }
+  );
+}
+
+export async function handleAdminContentPrice(
+  ctx: Context,
+  contentItemId: number
+): Promise<void> {
+  await ctx.answerCallbackQuery();
+  const adminId = ctx.from?.id;
+  const item = getContentItemById(contentItemId);
+
+  if (!item || !adminId) {
+    return;
+  }
+
+  setAdminContentSession(adminId, {
+    productId: item.productId,
+    contentType: item.contentType,
+    step: "awaiting_price_edit",
+    contentItemId: item.id,
+  });
+
+  const product = getProductById(item.productId);
+
+  await ctx.editMessageText(
+    `📚 *${product?.nameAr ?? item.productId}*\n` +
+      `${CONTENT_TYPE_LABELS[item.contentType]}\n\n` +
+      `${CONTENT_TYPE_EMOJI[item.contentType]} ${item.titleAr}\n` +
+      `السعر الحالي: *${formatPriceDzd(item.price)}*\n\n` +
+      getPricePrompt(),
+    {
+      parse_mode: "Markdown",
+      reply_markup: adminContentPriceKeyboard(item),
     }
   );
 }
@@ -422,7 +470,7 @@ export async function handleAdminContentUpload(ctx: Context): Promise<boolean> {
     setAdminContentSession(adminId, {
       ...session,
       titleAr: title,
-      step: "awaiting_media",
+      step: "awaiting_price",
     });
 
     const product = getProductById(session.productId);
@@ -430,6 +478,43 @@ export async function handleAdminContentUpload(ctx: Context): Promise<boolean> {
       `📚 *${product?.nameAr ?? session.productId}*\n` +
         `${CONTENT_TYPE_LABELS[session.contentType]}\n\n` +
         `✅ تم حفظ الاسم: *${title}*\n\n` +
+        getPricePrompt(),
+      {
+        parse_mode: "Markdown",
+        reply_markup: adminContentAddKeyboard(
+          session.productId,
+          session.contentType
+        ),
+      }
+    );
+    return true;
+  }
+
+  if (session.step === "awaiting_price") {
+    const price = message.text ? parsePriceDzd(message.text) : null;
+    if (price == null) {
+      await ctx.reply(INVALID_PRICE_MESSAGE, {
+        parse_mode: "Markdown",
+        reply_markup: adminContentAddKeyboard(
+          session.productId,
+          session.contentType
+        ),
+      });
+      return true;
+    }
+
+    setAdminContentSession(adminId, {
+      ...session,
+      price,
+      step: "awaiting_media",
+    });
+
+    const product = getProductById(session.productId);
+    await ctx.reply(
+      `📚 *${product?.nameAr ?? session.productId}*\n` +
+        `${CONTENT_TYPE_LABELS[session.contentType]}\n\n` +
+        `✅ تم حفظ الاسم: *${session.titleAr ?? "—"}*\n` +
+        `💰 السعر: ${formatPriceDzd(price)}\n\n` +
         getUploadPrompt(session.contentType),
       {
         parse_mode: "Markdown",
@@ -437,6 +522,56 @@ export async function handleAdminContentUpload(ctx: Context): Promise<boolean> {
           session.productId,
           session.contentType
         ),
+      }
+    );
+    return true;
+  }
+
+  if (session.step === "awaiting_price_edit") {
+    const item =
+      session.contentItemId != null
+        ? getContentItemById(session.contentItemId)
+        : null;
+
+    if (!item) {
+      clearAdminContentSession(adminId);
+      await ctx.reply("❌ العنصر غير موجود.", {
+        reply_markup: adminBackKeyboard(),
+      });
+      return true;
+    }
+
+    const price = message.text ? parsePriceDzd(message.text) : null;
+    if (price == null) {
+      await ctx.reply(INVALID_PRICE_MESSAGE, {
+        parse_mode: "Markdown",
+        reply_markup: adminContentPriceKeyboard(item),
+      });
+      return true;
+    }
+
+    const updated = updateContentItemPrice(item.id, price);
+    clearAdminContentSession(adminId);
+
+    if (!updated) {
+      await ctx.reply("❌ تعذّر تحديث السعر. حاول مرة أخرى.", {
+        reply_markup: adminContentItemKeyboard(item),
+      });
+      return true;
+    }
+
+    const product = getProductById(updated.productId);
+    await ctx.reply(
+      "✅ *تم تغيير السعر بنجاح.*\n\n" +
+        buildAdminItemMessage(
+          product?.nameAr ?? updated.productId,
+          updated.contentType,
+          updated.titleAr,
+          updated.price
+        ),
+      {
+        parse_mode: "Markdown",
+        reply_markup: adminContentItemKeyboard(updated),
       }
     );
     return true;
@@ -481,7 +616,8 @@ export async function handleAdminContentUpload(ctx: Context): Promise<boolean> {
         buildAdminItemMessage(
           product?.nameAr ?? updated.productId,
           updated.contentType,
-          updated.titleAr
+          updated.titleAr,
+          updated.price
         ),
       {
         parse_mode: "Markdown",
@@ -507,6 +643,21 @@ export async function handleAdminContentUpload(ctx: Context): Promise<boolean> {
   }
 
   const titleAr = session.titleAr?.trim();
+  if (session.price == null || session.price <= 0) {
+    setAdminContentSession(adminId, {
+      ...session,
+      step: "awaiting_price",
+    });
+    await ctx.reply(INVALID_PRICE_MESSAGE + "\n\n" + getPricePrompt(), {
+      parse_mode: "Markdown",
+      reply_markup: adminContentAddKeyboard(
+        session.productId,
+        session.contentType
+      ),
+    });
+    return true;
+  }
+
   if (!titleAr) {
     setAdminContentSession(adminId, {
       ...session,
@@ -527,6 +678,7 @@ export async function handleAdminContentUpload(ctx: Context): Promise<boolean> {
       productId: session.productId,
       contentType: session.contentType,
       titleAr,
+      price: session.price ?? null,
       telegramFileId: media.telegramFileId,
       telegramFileUniqueId: media.telegramFileUniqueId,
       mediaKind: media.mediaKind,
@@ -544,7 +696,8 @@ export async function handleAdminContentUpload(ctx: Context): Promise<boolean> {
       "✅ *تمت إضافة المحتوى بنجاح!*\n\n" +
         `📦 المنتج: ${product?.nameAr ?? savedProductId}\n` +
         `📌 القسم: ${CONTENT_TYPE_LABELS[savedContentType]}\n` +
-        `📝 العنوان: ${item.titleAr}`,
+        `📝 العنوان: ${item.titleAr}\n` +
+        `💰 السعر: ${formatPriceDzd(item.price)}`,
       {
         parse_mode: "Markdown",
         reply_markup: adminSectionKeyboard(savedProductId, savedContentType),

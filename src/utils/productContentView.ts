@@ -8,6 +8,7 @@ import {
 } from "../database/contentTypes";
 import { InlineKeyboard } from "grammy";
 import { CB } from "../keyboards/menus";
+import { formatPriceDzd } from "./price";
 
 export function groupContentByType(
   productId: string
@@ -108,7 +109,7 @@ export function buildAdminSectionMessage(
   } else {
     lines.push("*المحتوى الحالي:*");
     for (const item of items) {
-      lines.push(`• ${item.titleAr}`);
+      lines.push(`• ${item.titleAr} — ${formatPriceDzd(item.price)}`);
     }
   }
 

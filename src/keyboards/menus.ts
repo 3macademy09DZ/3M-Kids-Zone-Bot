@@ -3,6 +3,7 @@ import type { Order } from "../database/types";
 import { isPendingOrderStatus } from "../database/types";
 import { CONTENT_TYPE_EMOJI, type ContentType } from "../database/contentTypes";
 import { getProductById } from "../data/products";
+import { formatPriceDzd } from "../utils/price";
 
 export const CB = {
   ABOUT: "about",
@@ -26,6 +27,7 @@ export const CB = {
   ADMIN_CONTENT_ADD: "admin_content_add:",
   ADMIN_CONTENT_ITEM: "admin_content_item:",
   ADMIN_CONTENT_RENAME: "admin_content_rename:",
+  ADMIN_CONTENT_PRICE: "admin_content_price:",
   ADMIN_CONTENT_DELETE: "admin_content_delete:",
   ADMIN_CONTENT_DELETE_CONFIRM: "admin_content_delete_confirm:",
   MY_PRODUCTS_BACK: "my_products_back",
@@ -65,19 +67,20 @@ export function productListKeyboard(
 
 function itemButtonLabel(
   titleAr: string,
-  contentType: ContentType = "video"
+  contentType: ContentType = "video",
+  price?: number | null
 ): string {
-  return `${CONTENT_TYPE_EMOJI[contentType]} ${titleAr}`;
+  return `${CONTENT_TYPE_EMOJI[contentType]} ${titleAr} — ${formatPriceDzd(price)}`;
 }
 
 export function packageVideoListKeyboard(
-  items: { id: number; titleAr: string; contentType?: ContentType }[]
+  items: { id: number; titleAr: string; contentType?: ContentType; price?: number | null }[]
 ): InlineKeyboard {
   const keyboard = new InlineKeyboard();
   for (const item of items) {
     keyboard
       .text(
-        itemButtonLabel(item.titleAr, item.contentType ?? "video"),
+        itemButtonLabel(item.titleAr, item.contentType ?? "video", item.price),
         `${CB.ORDER_CONTENT}${item.id}`
       )
       .row();
@@ -143,6 +146,8 @@ export function adminContentItemKeyboard(item: {
   return new InlineKeyboard()
     .text("✏️ تغيير الاسم", `${CB.ADMIN_CONTENT_RENAME}${item.id}`)
     .row()
+    .text("💰 تغيير السعر", `${CB.ADMIN_CONTENT_PRICE}${item.id}`)
+    .row()
     .text("🗑️ حذف العنصر", `${CB.ADMIN_CONTENT_DELETE}${item.id}`)
     .row()
     .text(
@@ -152,6 +157,15 @@ export function adminContentItemKeyboard(item: {
 }
 
 export function adminContentRenameKeyboard(item: {
+  id: number;
+}): InlineKeyboard {
+  return new InlineKeyboard().text(
+    "↩️ إلغاء",
+    `${CB.ADMIN_CONTENT_ITEM}${item.id}`
+  );
+}
+
+export function adminContentPriceKeyboard(item: {
   id: number;
 }): InlineKeyboard {
   return new InlineKeyboard().text(

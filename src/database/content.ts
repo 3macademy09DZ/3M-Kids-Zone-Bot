@@ -17,6 +17,7 @@ interface ContentRow {
   media_kind: string;
   file_name: string | null;
   mime_type: string | null;
+  price: number | null;
   sort_order: number;
   created_at: string;
 }
@@ -47,6 +48,7 @@ function mapRow(row: ContentRow): ProductContentItem {
     mediaKind: row.media_kind as ProductContentItem["mediaKind"],
     fileName: row.file_name,
     mimeType: row.mime_type,
+    price: row.price ?? null,
     sortOrder: row.sort_order,
     createdAt: row.created_at,
   };
@@ -58,8 +60,8 @@ export function createContentItem(input: CreateContentInput): ProductContentItem
     INSERT INTO product_content (
       product_id, content_type, title_ar, description_ar,
       telegram_file_id, telegram_file_unique_id, media_kind,
-      file_name, mime_type, sort_order
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      file_name, mime_type, price, sort_order
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const result = stmt.run(
@@ -72,6 +74,7 @@ export function createContentItem(input: CreateContentInput): ProductContentItem
     input.mediaKind,
     input.fileName ?? null,
     input.mimeType ?? null,
+    input.price ?? null,
     input.sortOrder ?? 0
   );
 
@@ -146,6 +149,15 @@ export function updateContentItemTitle(
     titleAr,
     id
   );
+  return getContentItemById(id);
+}
+
+export function updateContentItemPrice(
+  id: number,
+  price: number
+): ProductContentItem | null {
+  const db = getDatabase();
+  db.prepare("UPDATE product_content SET price = ? WHERE id = ?").run(price, id);
   return getContentItemById(id);
 }
 

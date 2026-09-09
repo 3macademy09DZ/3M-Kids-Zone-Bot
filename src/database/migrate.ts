@@ -58,4 +58,12 @@ export function runMigrations(database: DatabaseSync): void {
     CREATE INDEX IF NOT EXISTS idx_video_entitlements_content
       ON video_entitlements(content_id);
   `);
+
+  if (
+    tableExists(database, "product_content") &&
+    !hasColumn(database, "product_content", "price")
+  ) {
+    database.exec("ALTER TABLE product_content ADD COLUMN price INTEGER");
+    logger.info("Migration: added product_content.price");
+  }
 }

@@ -2,14 +2,17 @@ import type { ContentType } from "../database/contentTypes";
 
 export type AdminContentStep =
   | "awaiting_title"
+  | "awaiting_price"
   | "awaiting_media"
-  | "awaiting_rename";
+  | "awaiting_rename"
+  | "awaiting_price_edit";
 
 export interface AdminContentSession {
   productId: string;
   contentType: ContentType;
   step: AdminContentStep;
   titleAr?: string;
+  price?: number;
   contentItemId?: number;
 }
 

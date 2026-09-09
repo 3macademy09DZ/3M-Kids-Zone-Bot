@@ -17,6 +17,7 @@ import {
   productListKeyboard,
 } from "../keyboards/menus";
 import { userHasVideoAccess } from "../services/contentAccess";
+import { formatPriceDzd } from "../utils/price";
 import { logger } from "../utils/logger";
 
 function getPurchasableItems(productId: string): ProductContentItem[] {
@@ -34,14 +35,18 @@ function buildPurchasableListText(items: ProductContentItem[]): string {
   if (videos.length > 0) {
     sections.push(
       `*${CONTENT_TYPE_LABELS.video} المتاحة للطلب:*`,
-      ...videos.map((item) => `• ${item.titleAr}`)
+      ...videos.map(
+        (item) => `• ${item.titleAr} — ${formatPriceDzd(item.price)}`
+      )
     );
   }
 
   if (games.length > 0) {
     sections.push(
       `*${CONTENT_TYPE_LABELS.game} المتاحة للطلب:*`,
-      ...games.map((item) => `• ${item.titleAr}`)
+      ...games.map(
+        (item) => `• ${item.titleAr} — ${formatPriceDzd(item.price)}`
+      )
     );
   }
 
@@ -55,7 +60,7 @@ export async function handleOrderMenu(ctx: Context): Promise<void> {
   const text =
     "🛒 *طلب المحتوى*\n\n" +
     "اختر الحزمة/القسم أولًا، ثم اختر الفيديو أو اللعبة/النشاط الذي تريد شراءه.\n\n" +
-    "_الأسعار والدفع سيتم إضافتهما لاحقاً._";
+    "_الدفع سيتم إضافته لاحقاً._";
 
   await ctx.editMessageText(text, {
     parse_mode: "Markdown",
@@ -139,7 +144,9 @@ export async function handleVideoSelect(
 
   const text =
     `${emoji} *${item.titleAr}*\n\n` +
-    `📦 الحزمة: ${product.nameAr}\n\n` +
+    `📌 النوع: ${itemLabel}\n` +
+    `📦 الحزمة: ${product.nameAr}\n` +
+    `💰 السعر: ${formatPriceDzd(item.price)}\n\n` +
     (item.descriptionAr ? `${item.descriptionAr}\n\n` : "") +
     `هل ترغب بتأكيد طلب هذا ${itemLabel}؟`;
 
@@ -197,6 +204,7 @@ export async function handleConfirmOrder(
       `📋 رقم الطلب: \`${order.id}\`\n` +
       `📦 الحزمة: ${product.nameAr}\n` +
       `${emoji} ${itemLabel}: ${item.titleAr}\n` +
+      `💰 السعر: ${formatPriceDzd(item.price)}\n` +
       `📌 الحالة: قيد المراجعة\n\n` +
       "سيتواصل معك فريقنا قريباً لإتمام العملية.\n" +
       "شكراً لثقتك في *3M Kids Zone*!";
