@@ -10,6 +10,10 @@ import {
   getUniqueCustomerIds,
 } from "../database/orders";
 import { getContentItemById } from "../database/content";
+import {
+  CONTENT_TYPE_EMOJI,
+  CONTENT_TYPE_ITEM_LABEL,
+} from "../database/contentTypes";
 import { getProductById } from "../data/products";
 import type { InviteLinkService } from "../services/inviteLink";
 import {
@@ -50,19 +54,27 @@ function getStatusLabel(status: string): string {
   return STATUS_LABELS[normalized as OrderStatus] ?? status;
 }
 
-function getOrderVideoTitle(order: Order): string {
+function getOrderItemLabel(order: Order): { emoji: string; label: string; title: string } {
   if (order.contentId == null) {
-    return "غير محدد";
+    return { emoji: "🎬", label: "العنصر", title: "غير محدد" };
   }
 
   const item = getContentItemById(order.contentId);
-  return item?.titleAr ?? `فيديو #${order.contentId}`;
+  if (!item) {
+    return { emoji: "🎬", label: "العنصر", title: `#${order.contentId}` };
+  }
+
+  return {
+    emoji: CONTENT_TYPE_EMOJI[item.contentType],
+    label: CONTENT_TYPE_ITEM_LABEL[item.contentType],
+    title: item.titleAr,
+  };
 }
 
 export function buildOrderMessage(order: Order): string {
   const product = getProductById(order.productId);
   const productName = product?.nameAr ?? order.productId;
-  const videoTitle = getOrderVideoTitle(order);
+  const item = getOrderItemLabel(order);
   const username = order.telegramUsername
     ? `@${order.telegramUsername}`
     : `ID:${order.telegramUserId}`;
@@ -72,7 +84,7 @@ export function buildOrderMessage(order: Order): string {
     `📌 الحالة: ${escapeHtml(getStatusLabel(order.status))}\n` +
     `👤 العميل: ${escapeHtml(username)}\n` +
     `📦 الحزمة: ${escapeHtml(productName)}\n` +
-    `🎬 الفيديو: ${escapeHtml(videoTitle)}\n` +
+    `${item.emoji} ${escapeHtml(item.label)}: ${escapeHtml(item.title)}\n` +
     `📅 التاريخ: ${escapeHtml(order.createdAt)}`
   );
 }
@@ -186,10 +198,11 @@ export async function handleAdminApproveOrder(
     await ctx.answerCallbackQuery({ text: "✅ تم قبول الطلب." });
 
     try {
+      const approvedItem = getOrderItemLabel(result.order);
       await ctx.api.sendMessage(
         result.order.telegramUserId,
         "✅ تمت الموافقة على طلبك\n" +
-          "🎬 أصبح الفيديو متاحًا لك الآن",
+          `${approvedItem.emoji} أصبح ${approvedItem.label} متاحًا لك الآن`,
         {
           reply_markup: openMyProductsKeyboard(),
         }

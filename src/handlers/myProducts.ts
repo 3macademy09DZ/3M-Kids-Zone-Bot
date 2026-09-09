@@ -1,6 +1,10 @@
 import type { Context } from "grammy";
 import { getAllProducts, getProductById } from "../data/products";
-import type { ContentType, ProductContentItem } from "../database/contentTypes";
+import {
+  CONTENT_TYPE_EMOJI,
+  type ContentType,
+  type ProductContentItem,
+} from "../database/contentTypes";
 import {
   backToMainKeyboard,
   myProductBackKeyboard,
@@ -29,7 +33,7 @@ function groupVideosByPackage(videos: ProductContentItem[]): string {
 
     groups.push(`*${product.nameAr}*`);
     for (const video of packVideos) {
-      groups.push(`• ${video.titleAr}`);
+      groups.push(`• ${CONTENT_TYPE_EMOJI[video.contentType]} ${video.titleAr}`);
     }
     groups.push("");
   }
@@ -39,7 +43,7 @@ function groupVideosByPackage(videos: ProductContentItem[]): string {
   if (leftover.length > 0) {
     groups.push("*حزم أخرى*");
     for (const video of leftover) {
-      groups.push(`• ${video.titleAr}`);
+      groups.push(`• ${CONTENT_TYPE_EMOJI[video.contentType]} ${video.titleAr}`);
     }
     groups.push("");
   }
@@ -50,9 +54,9 @@ function groupVideosByPackage(videos: ProductContentItem[]): string {
 function buildMyProductsText(videos: ProductContentItem[]): string {
   return (
     "📦 *منتجاتي*\n\n" +
-    "هذه هي الفيديوهات التي اشتريتها:\n\n" +
+    "هذه هي العناصر التي اشتريتها:\n\n" +
     groupVideosByPackage(videos) +
-    "\n\n_اضغط على فيديو لفتحه:_"
+    "\n\n_اضغط على عنصر لفتحه:_"
   );
 }
 
@@ -74,8 +78,8 @@ export async function handleMyProducts(ctx: Context): Promise<void> {
     if (videos.length === 0) {
       await ctx.reply(
         "📦 *منتجاتي*\n\n" +
-          "لا توجد لديك فيديوهات مشتراة حالياً.\n\n" +
-          "يمكنك طلب فيديو من القائمة الرئيسية عبر /start",
+          "لا توجد لديك عناصر مشتراة حالياً.\n\n" +
+          "يمكنك طلب فيديو أو لعبة/نشاط من القائمة الرئيسية عبر /start",
         {
           parse_mode: "Markdown",
           reply_markup: backToMainKeyboard(),
@@ -106,7 +110,7 @@ export async function handleMyProductsBack(ctx: Context): Promise<void> {
 
   if (videos.length === 0) {
     await ctx.editMessageText(
-      "📦 *منتجاتي*\n\n" + "لا توجد لديك فيديوهات مشتراة حالياً.",
+      "📦 *منتجاتي*\n\n" + "لا توجد لديك عناصر مشتراة حالياً.",
       {
         parse_mode: "Markdown",
         reply_markup: backToMainKeyboard(),
@@ -135,7 +139,7 @@ export async function handleMyProductOpen(
 
   if (!userHasEntitledVideosInProduct(user.id, productId) || videos.length === 0) {
     await ctx.answerCallbackQuery({
-      text: "⛔ لا توجد فيديوهات متاحة لك في هذه الحزمة.",
+      text: "⛔ لا توجد عناصر متاحة لك في هذه الحزمة.",
       show_alert: true,
     });
     return;
@@ -151,13 +155,15 @@ export async function handleMyProductOpen(
     return;
   }
 
-  const lines = videos.map((video) => `• ${video.titleAr}`);
+  const lines = videos.map(
+    (video) => `• ${CONTENT_TYPE_EMOJI[video.contentType]} ${video.titleAr}`
+  );
 
   await ctx.editMessageText(
     `📂 *${product.nameAr}*\n\n` +
-      "الفيديوهات المتاحة لك في هذه الحزمة:\n\n" +
+      "العناصر المتاحة لك في هذه الحزمة:\n\n" +
       lines.join("\n") +
-      "\n\n_اضغط على فيديو لفتحه:_",
+      "\n\n_اضغط على عنصر لفتحه:_",
     {
       parse_mode: "Markdown",
       reply_markup: myProductVideosKeyboard(videos),
@@ -224,13 +230,13 @@ export async function handleMyContentItemOpen(
 
   if (!allowed || !item) {
     await ctx.answerCallbackQuery({
-      text: "⛔ هذا الفيديو غير متاح في حسابك. يجب شراؤه أولًا.",
+      text: "⛔ هذا المحتوى غير متاح في حسابك. يجب شراؤه أولًا.",
       show_alert: true,
     });
     return;
   }
 
-  await ctx.answerCallbackQuery({ text: "⏳ جاري إرسال الفيديو…" });
+  await ctx.answerCallbackQuery({ text: "⏳ جاري إرسال المحتوى…" });
 
   try {
     const chatId = ctx.chat?.id ?? user.id;
@@ -243,11 +249,11 @@ export async function handleMyContentItemOpen(
 
     if (result === "denied") {
       await ctx.reply(
-        "⛔ هذا الفيديو غير متاح في حسابك. يمكنك طلبه من «🛒 طلب المحتوى»."
+        "⛔ هذا المحتوى غير متاح في حسابك. يمكنك طلبه من «🛒 طلب المحتوى»."
       );
     }
   } catch (error) {
     logger.error(`Failed to deliver content item #${contentItemId}`, error);
-    await ctx.reply("❌ تعذّر إرسال الفيديو. حاول مرة أخرى لاحقاً.");
+    await ctx.reply("❌ تعذّر إرسال المحتوى. حاول مرة أخرى لاحقاً.");
   }
 }
