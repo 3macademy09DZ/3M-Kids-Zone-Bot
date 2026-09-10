@@ -19,6 +19,8 @@ export const CB = {
   HELP_PROMO: "help_promo",
   HELP_PROBLEM: "help_issue",
   HELP_SUPPORT_CANCEL: "help_scx",
+  SUPPORT_REPLY: "sup_r:",
+  SUPPORT_REPLY_CANCEL: "sup_rc:",
   BACK_MAIN: "back_main",
   ORDER_PRODUCT: "order_product:",
   ORDER_CONTENT: "order_content:",
@@ -147,13 +149,27 @@ export function supportDoneKeyboard(): InlineKeyboard {
   return new InlineKeyboard().text("🏠 القائمة الرئيسية", CB.BACK_MAIN);
 }
 
+export function customerSupportReplyKeyboard(ticketId: number): InlineKeyboard {
+  return new InlineKeyboard().text(
+    "💬 الرد على الإدارة",
+    `${CB.SUPPORT_REPLY}${ticketId}`
+  );
+}
+
+export function customerSupportReplyCancelKeyboard(ticketId: number): InlineKeyboard {
+  return new InlineKeyboard().text(
+    "❌ إلغاء",
+    `${CB.SUPPORT_REPLY_CANCEL}${ticketId}`
+  );
+}
+
 export function adminSupportNotifyKeyboard(ticketId: number): InlineKeyboard {
   return new InlineKeyboard()
     .text("💬 الرد على العميل", `${CB.ADMIN_SUPPORT_REPLY}${ticketId}`)
     .row()
-    .text("✅ إغلاق التذكرة", `${CB.ADMIN_SUPPORT_CLOSE}${ticketId}`)
+    .text("📂 تفاصيل التذكرة", `${CB.ADMIN_SUPPORT_VIEW}${ticketId}`)
     .row()
-    .text("📂 تفاصيل التذكرة", `${CB.ADMIN_SUPPORT_VIEW}${ticketId}`);
+    .text("✅ إغلاق التذكرة", `${CB.ADMIN_SUPPORT_CLOSE}${ticketId}`);
 }
 
 export function adminSupportHubKeyboard(counts: {

@@ -106,7 +106,8 @@ function initSchema(database: DatabaseSync): void {
       photo_file_id TEXT,
       status TEXT NOT NULL DEFAULT 'open',
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      closed_at TEXT
+      closed_at TEXT,
+      last_activity_at TEXT
     );
 
     CREATE UNIQUE INDEX IF NOT EXISTS idx_support_tickets_ticket_number
@@ -118,6 +119,7 @@ function initSchema(database: DatabaseSync): void {
     CREATE TABLE IF NOT EXISTS support_replies (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       ticket_id INTEGER NOT NULL,
+      sender TEXT NOT NULL DEFAULT 'admin',
       message_text TEXT,
       photo_file_id TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
