@@ -33,6 +33,7 @@ import {
   handleAdminInvites,
   handleAdminSettings,
 } from "./handlers/admin";
+import { handleAdminBackup } from "./handlers/adminBackup";
 import {
   handleAdminCustomers,
   handleAdminCustomerView,
@@ -238,6 +239,9 @@ export function createBot(config: EnvConfig): Bot {
       const page = ctx.match![2] ? Number(ctx.match![2]) : 0;
       await handleAdminCustomerOrders(ctx, telegramUserId, page);
     }
+  );
+  bot.callbackQuery(CB.ADMIN_BACKUP, adminOnly, (ctx) =>
+    handleAdminBackup(ctx, config)
   );
   bot.callbackQuery(CB.ADMIN_STATS, adminOnly, handleAdminStats);
   bot.callbackQuery(CB.ADMIN_PROMO, adminOnly, handleAdminPromoMenu);
