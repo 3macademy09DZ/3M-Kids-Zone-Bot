@@ -9,6 +9,8 @@ import {
   type ProductContentItem,
 } from "../database/contentTypes";
 import { createOrder } from "../database/orders";
+import { getEnvConfig } from "../config/env";
+import { paymentMethodOptions, resolveAppSettings } from "../config/appSettings";
 import { validatePromoForCheckout } from "../database/promos";
 import {
   backToMainKeyboard,
@@ -424,7 +426,10 @@ async function createOrderAndAskPayment(
 
     await ctx.editMessageText(text, {
       parse_mode: "Markdown",
-      reply_markup: paymentMethodKeyboard(order.id),
+      reply_markup: paymentMethodKeyboard(
+        order.id,
+        paymentMethodOptions(resolveAppSettings(getEnvConfig()))
+      ),
     });
   } catch (error) {
     logger.error("Failed to create order", error);

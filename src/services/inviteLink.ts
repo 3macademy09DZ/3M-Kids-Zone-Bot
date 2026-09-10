@@ -1,5 +1,7 @@
 import type { Api } from "grammy";
+import type { EnvConfig } from "../config/env";
 import { isChannelConfigured } from "../config/env";
+import { effectiveChannelId, resolveAppSettings } from "../config/appSettings";
 import { logger } from "../utils/logger";
 
 /**
@@ -37,18 +39,22 @@ export interface GenerateInviteLinkResult {
 export class InviteLinkService {
   constructor(
     private readonly api: Api,
-    private readonly channelId: string | undefined
+    private readonly env: EnvConfig
   ) {}
 
+  private resolvedChannelId(): string | undefined {
+    return effectiveChannelId(resolveAppSettings(this.env));
+  }
+
   isReady(): boolean {
-    return isChannelConfigured(this.channelId);
+    return isChannelConfigured(this.resolvedChannelId());
   }
 
   getStatusMessage(): string {
     if (!this.isReady()) {
       return (
         "⚠️ نظام روابط الدعوة غير مفعّل حالياً.\n\n" +
-        "يُرجى ضبط CHANNEL_ID في ملف .env وإضافة البوت كمسؤول في القناة الخاصة " +
+        "يُرجى ضبط القناة من قسم الإعدادات وإضافة البوت كمسؤول في القناة الخاصة " +
         "«3M Kids Zone» مع صلاحية «إنشاء روابط دعوة»."
       );
     }
@@ -68,16 +74,17 @@ export class InviteLinkService {
     linkName: string,
     config: InviteLinkConfig = DEFAULT_INVITE_LINK_CONFIG
   ): Promise<GenerateInviteLinkResult> {
-    if (!this.isReady() || !this.channelId) {
-      logger.warn("Invite link generation skipped: CHANNEL_ID not configured");
+    const channelId = this.resolvedChannelId();
+    if (!this.isReady() || !channelId) {
+      logger.warn("Invite link generation skipped: channel is not configured");
       return {
         success: false,
-        error: "CHANNEL_ID is not configured",
+        error: "Channel is not configured",
       };
     }
 
     try {
-      const inviteLink = await this.api.createChatInviteLink(this.channelId, {
+      const inviteLink = await this.api.createChatInviteLink(channelId, {
         name: linkName,
         member_limit: config.memberLimit,
         expire_date: config.expireDate ?? undefined,
@@ -106,13 +113,14 @@ export class InviteLinkService {
    * Revokes an existing invitation link (for future use).
    */
   async revokeInviteLink(inviteLink: string): Promise<boolean> {
-    if (!this.isReady() || !this.channelId) {
-      logger.warn("Invite link revocation skipped: CHANNEL_ID not configured");
+    const channelId = this.resolvedChannelId();
+    if (!this.isReady() || !channelId) {
+      logger.warn("Invite link revocation skipped: channel is not configured");
       return false;
     }
 
     try {
-      await this.api.revokeChatInviteLink(this.channelId, inviteLink);
+      await this.api.revokeChatInviteLink(channelId, inviteLink);
       logger.info("Invite link revoked");
       return true;
     } catch (error) {

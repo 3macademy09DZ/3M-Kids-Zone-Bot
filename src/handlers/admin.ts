@@ -1,6 +1,5 @@
 import type { Context } from "grammy";
 import { InlineKeyboard } from "grammy";
-import { isChannelConfigured } from "../config/env";
 import type { EnvConfig } from "../config/env";
 import {
   approveOrder,
@@ -39,6 +38,7 @@ import { buildPurchaseReceipt, getOrderDisplayNumber } from "../utils/orderNumbe
 import { formatPriceDzd } from "../utils/price";
 import { logger } from "../utils/logger";
 import { clearAdminPromoSession } from "../state/adminPromoSession";
+import { clearAdminSettingsSession } from "../state/adminSettingsSession";
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   pending: "⏳ قيد المراجعة",
@@ -295,6 +295,7 @@ export async function handleAdminBack(ctx: Context): Promise<void> {
   await ctx.answerCallbackQuery();
   if (ctx.from) {
     clearAdminPromoSession(ctx.from.id);
+    clearAdminSettingsSession(ctx.from.id);
   }
   await ctx.editMessageText("🔐 *لوحة الإدارة — 3M Kids Zone*", {
     parse_mode: "Markdown",
@@ -548,40 +549,6 @@ export async function handleAdminInvites(
   }
 
   text += "\n\n_إنشاء روابط دعوة تلقائياً — قريباً._";
-
-  await ctx.editMessageText(text, {
-    parse_mode: "Markdown",
-    reply_markup: adminBackKeyboard(),
-  });
-}
-
-export async function handleAdminSettings(
-  ctx: Context,
-  config: EnvConfig,
-  inviteLinkService: InviteLinkService
-): Promise<void> {
-  await ctx.answerCallbackQuery();
-
-  const channelStatus = isChannelConfigured(config.channelId)
-    ? "✅ مُعدّ"
-    : "❌ غير مُعدّ";
-  const contactStatus = config.contactUsername ? "✅ مُعدّ" : "❌ غير مُعدّ";
-  const inviteStatus = inviteLinkService.isReady() ? "✅ جاهز" : "⚠️ غير جاهز";
-  const ccpStatus =
-    config.ccpAccountInfo || config.baridimobRip || config.paymentAccountName
-      ? "✅ مُعدّ"
-      : "❌ غير مُعدّ";
-  const redotStatus = config.redotpayPaymentInfo ? "✅ مُعدّ" : "❌ غير مُعدّ";
-
-  const text =
-    "⚙️ *الإعدادات*\n\n" +
-    `📢 القناة (CHANNEL_ID): ${channelStatus}\n` +
-    `📞 التواصل (CONTACT_USERNAME): ${contactStatus}\n` +
-    `🔗 روابط الدعوة: ${inviteStatus}\n` +
-    `💳 CCP / BaridiMob: ${ccpStatus}\n` +
-    `💳 RedotPay: ${redotStatus}\n` +
-    `👤 المسؤول: \`${config.adminTelegramId}\`\n\n` +
-    "_تعديل الإعدادات من ملف .env — قريباً: لوحة إعدادات داخل البوت._";
 
   await ctx.editMessageText(text, {
     parse_mode: "Markdown",

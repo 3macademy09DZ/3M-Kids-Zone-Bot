@@ -19,6 +19,7 @@ import {
   adminPromoViewKeyboard,
 } from "../keyboards/menus";
 import { clearAdminContentSession } from "../state/adminContentSession";
+import { clearAdminSettingsSession } from "../state/adminSettingsSession";
 import {
   clearAdminPromoSession,
   getAdminPromoSession,
@@ -157,6 +158,7 @@ export async function handleAdminPromoNew(ctx: Context): Promise<void> {
   }
 
   clearAdminContentSession(adminId);
+  clearAdminSettingsSession(adminId);
   setAdminPromoSession(adminId, { step: "awaiting_code" });
 
   await presentPromoText(

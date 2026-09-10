@@ -29,6 +29,8 @@ function parseAdminId(raw: string): number {
   return id;
 }
 
+let cachedConfig: EnvConfig | null = null;
+
 export function loadConfig(): EnvConfig {
   const botToken = requireEnv("BOT_TOKEN");
   const adminTelegramId = parseAdminId(requireEnv("ADMIN_TELEGRAM_ID"));
@@ -40,7 +42,7 @@ export function loadConfig(): EnvConfig {
   const paymentAccountName = process.env.PAYMENT_ACCOUNT_NAME?.trim() || undefined;
   const redotpayPaymentInfo = process.env.REDOTPAY_PAYMENT_INFO?.trim() || undefined;
 
-  return {
+  cachedConfig = {
     botToken,
     adminTelegramId,
     channelId,
@@ -50,6 +52,14 @@ export function loadConfig(): EnvConfig {
     paymentAccountName,
     redotpayPaymentInfo,
   };
+  return cachedConfig;
+}
+
+export function getEnvConfig(): EnvConfig {
+  if (!cachedConfig) {
+    return loadConfig();
+  }
+  return cachedConfig;
 }
 
 export function isChannelConfigured(channelId: string | undefined): boolean {

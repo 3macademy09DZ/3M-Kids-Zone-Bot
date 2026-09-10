@@ -1,6 +1,7 @@
 import type { Context } from "grammy";
-import { formatContactLink } from "../config/env";
+import { formatContactLink, getEnvConfig } from "../config/env";
 import type { EnvConfig } from "../config/env";
+import { isContactActive, resolveAppSettings } from "../config/appSettings";
 import { backToMainKeyboard, mainMenuKeyboard } from "../keyboards/menus";
 import { clearCheckoutSession } from "../state/checkoutSession";
 
@@ -9,13 +10,20 @@ export const WELCOME_MESSAGE =
   "نحن نقدّم محتوى تعليمي وتفاعلي مميز للأطفال.\n\n" +
   "اختر أحد الخيارات أدناه للبدء:";
 
+function mainMenu() {
+  const settings = resolveAppSettings(getEnvConfig());
+  return mainMenuKeyboard({
+    showContact: settings.contactEnabled,
+  });
+}
+
 export async function handleStart(ctx: Context): Promise<void> {
   if (ctx.from) {
     clearCheckoutSession(ctx.from.id);
   }
   await ctx.reply(WELCOME_MESSAGE, {
     parse_mode: "Markdown",
-    reply_markup: mainMenuKeyboard(),
+    reply_markup: mainMenu(),
   });
 }
 
@@ -26,7 +34,7 @@ export async function handleBackToMain(ctx: Context): Promise<void> {
   }
   await ctx.editMessageText(WELCOME_MESSAGE, {
     parse_mode: "Markdown",
-    reply_markup: mainMenuKeyboard(),
+    reply_markup: mainMenu(),
   });
 }
 
@@ -54,21 +62,21 @@ export async function handleContact(
 ): Promise<void> {
   await ctx.answerCallbackQuery();
 
-  const contactLink = formatContactLink(config.contactUsername);
+  const settings = resolveAppSettings(config);
+  const contactLink = formatContactLink(settings.contactUsername);
 
   let text =
     "📞 *التواصل معنا*\n\n" +
     "يسعدنا تواصلك معنا لأي استفسار أو مساعدة.";
 
-  if (contactLink && config.contactUsername) {
-    const displayName = config.contactUsername.startsWith("@")
-      ? config.contactUsername
-      : `@${config.contactUsername}`;
+  if (isContactActive(settings) && contactLink && settings.contactUsername) {
+    const displayName = settings.contactUsername.startsWith("@")
+      ? settings.contactUsername
+      : `@${settings.contactUsername}`;
     text += `\n\n👤 ${displayName}\n🔗 [اضغط هنا للتواصل](${contactLink})`;
   } else {
     text +=
-      "\n\n⚠️ معلومات التواصل غير مُعدّة حالياً.\n" +
-      "يُرجى ضبط CONTACT_USERNAME في ملف .env.";
+      "\n\n⚠️ معلومات التواصل غير مُعدّة حالياً.";
   }
 
   await ctx.editMessageText(text, {

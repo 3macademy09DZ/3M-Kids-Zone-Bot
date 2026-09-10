@@ -52,6 +52,25 @@ export const CB = {
   ADMIN_CUSTOMER_ORDERS: "admin_co:",
   ADMIN_INVITES: "admin_invites",
   ADMIN_SETTINGS: "admin_settings",
+  ADMIN_SET_CHANNEL: "aset_ch",
+  ADMIN_SET_CONTACT: "aset_ct",
+  ADMIN_SET_PAY: "aset_py",
+  ADMIN_SET_ADMIN: "aset_ad",
+  ADMIN_SET_CH_EDIT: "aset_che",
+  ADMIN_SET_CH_ON: "aset_ch1",
+  ADMIN_SET_CH_OFF: "aset_ch0",
+  ADMIN_SET_CT_EDIT: "aset_cte",
+  ADMIN_SET_CT_ON: "aset_ct1",
+  ADMIN_SET_CT_OFF: "aset_ct0",
+  ADMIN_SET_PAY_CCP: "aset_pcc",
+  ADMIN_SET_PAY_RIP: "aset_pri",
+  ADMIN_SET_PAY_NAME: "aset_pnm",
+  ADMIN_SET_PAY_RDP: "aset_prd",
+  ADMIN_SET_PAY_CCP_ON: "aset_pc1",
+  ADMIN_SET_PAY_CCP_OFF: "aset_pc0",
+  ADMIN_SET_PAY_RDP_ON: "aset_pr1",
+  ADMIN_SET_PAY_RDP_OFF: "aset_pr0",
+  ADMIN_SET_CANCEL: "aset_x",
   ADMIN_BACKUP: "admin_bak",
   ADMIN_BACK: "admin_back",
   ADMIN_CONTENT: "admin_content",
@@ -68,15 +87,20 @@ export const CB = {
   MY_CONTENT_ITEM: "my_content_item:",
 } as const;
 
-export function mainMenuKeyboard(): InlineKeyboard {
-  return new InlineKeyboard()
+export function mainMenuKeyboard(options?: { showContact?: boolean }): InlineKeyboard {
+  const keyboard = new InlineKeyboard()
     .text("🎓 التعرف على المحتوى", CB.ABOUT)
     .row()
     .text("🛒 طلب المحتوى", CB.ORDER)
     .row()
     .text("📦 منتجاتي", CB.MY_PRODUCTS)
-    .row()
-    .text("📞 التواصل معنا", CB.CONTACT);
+    .row();
+
+  if (options?.showContact !== false) {
+    keyboard.text("📞 التواصل معنا", CB.CONTACT).row();
+  }
+
+  return keyboard;
 }
 
 export function openMyProductsKeyboard(): InlineKeyboard {
@@ -255,13 +279,23 @@ export function adminPromoDeleteConfirmKeyboard(id: number): InlineKeyboard {
     .text("↩️ إلغاء", `${CB.ADMIN_PROMO_VIEW}${id}`);
 }
 
-export function paymentMethodKeyboard(orderId: number): InlineKeyboard {
-  return new InlineKeyboard()
-    .text("💳 CCP / BaridiMob", `${CB.PAY_METHOD_CCP}${orderId}`)
-    .row()
-    .text("💳 RedotPay", `${CB.PAY_METHOD_REDOTPAY}${orderId}`)
-    .row()
-    .text("↩️ القائمة الرئيسية", CB.BACK_MAIN);
+export function paymentMethodKeyboard(
+  orderId: number,
+  options?: { ccp?: boolean; redotpay?: boolean }
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  const showCcp = options?.ccp !== false;
+  const showRedotpay = options?.redotpay !== false;
+
+  if (showCcp) {
+    keyboard.text("💳 CCP / BaridiMob", `${CB.PAY_METHOD_CCP}${orderId}`).row();
+  }
+  if (showRedotpay) {
+    keyboard.text("💳 RedotPay", `${CB.PAY_METHOD_REDOTPAY}${orderId}`).row();
+  }
+
+  keyboard.text("↩️ القائمة الرئيسية", CB.BACK_MAIN);
+  return keyboard;
 }
 
 export function resubmitPaymentKeyboard(orderId: number): InlineKeyboard {
@@ -288,6 +322,77 @@ export function adminMenuKeyboard(): InlineKeyboard {
     .text("🔗 روابط الدعوة", CB.ADMIN_INVITES)
     .row()
     .text("⚙️ الإعدادات", CB.ADMIN_SETTINGS);
+}
+
+export function adminSettingsHubKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("📣 إعدادات القناة", CB.ADMIN_SET_CHANNEL)
+    .row()
+    .text("☎️ إعدادات التواصل", CB.ADMIN_SET_CONTACT)
+    .row()
+    .text("💳 إعدادات الدفع", CB.ADMIN_SET_PAY)
+    .row()
+    .text("👤 بيانات المسؤول", CB.ADMIN_SET_ADMIN)
+    .row()
+    .text("🔙 رجوع", CB.ADMIN_BACK);
+}
+
+export function adminSettingsChannelKeyboard(enabled: boolean): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("✏️ تغيير القناة", CB.ADMIN_SET_CH_EDIT)
+    .row()
+    .text(
+      enabled ? "❌ تعطيل استخدام القناة" : "✅ تفعيل استخدام القناة",
+      enabled ? CB.ADMIN_SET_CH_OFF : CB.ADMIN_SET_CH_ON
+    )
+    .row()
+    .text("🔙 رجوع", CB.ADMIN_SETTINGS);
+}
+
+export function adminSettingsContactKeyboard(enabled: boolean): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("✏️ تغيير اسم التواصل", CB.ADMIN_SET_CT_EDIT)
+    .row()
+    .text(
+      enabled ? "❌ تعطيل زر التواصل" : "✅ تفعيل زر التواصل",
+      enabled ? CB.ADMIN_SET_CT_OFF : CB.ADMIN_SET_CT_ON
+    )
+    .row()
+    .text("🔙 رجوع", CB.ADMIN_SETTINGS);
+}
+
+export function adminSettingsPaymentKeyboard(input: {
+  ccpEnabled: boolean;
+  redotpayEnabled: boolean;
+}): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("✏️ تعديل معلومات CCP", CB.ADMIN_SET_PAY_CCP)
+    .row()
+    .text("✏️ تعديل RIP BaridiMob", CB.ADMIN_SET_PAY_RIP)
+    .row()
+    .text("✏️ تعديل اسم صاحب الحساب", CB.ADMIN_SET_PAY_NAME)
+    .row()
+    .text("✏️ تعديل معلومات RedotPay", CB.ADMIN_SET_PAY_RDP)
+    .row()
+    .text(
+      input.ccpEnabled ? "❌ تعطيل CCP / BaridiMob" : "✅ تفعيل CCP / BaridiMob",
+      input.ccpEnabled ? CB.ADMIN_SET_PAY_CCP_OFF : CB.ADMIN_SET_PAY_CCP_ON
+    )
+    .row()
+    .text(
+      input.redotpayEnabled ? "❌ تعطيل RedotPay" : "✅ تفعيل RedotPay",
+      input.redotpayEnabled ? CB.ADMIN_SET_PAY_RDP_OFF : CB.ADMIN_SET_PAY_RDP_ON
+    )
+    .row()
+    .text("🔙 رجوع", CB.ADMIN_SETTINGS);
+}
+
+export function adminSettingsCancelKeyboard(): InlineKeyboard {
+  return new InlineKeyboard().text("❌ إلغاء", CB.ADMIN_SET_CANCEL);
+}
+
+export function adminSettingsBackKeyboard(): InlineKeyboard {
+  return new InlineKeyboard().text("🔙 رجوع", CB.ADMIN_SETTINGS);
 }
 
 export function adminContentProductKeyboard(

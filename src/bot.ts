@@ -31,9 +31,20 @@ import {
   handleAdminAcceptPayment,
   handleAdminRejectPayment,
   handleAdminInvites,
-  handleAdminSettings,
 } from "./handlers/admin";
 import { handleAdminBackup } from "./handlers/adminBackup";
+import {
+  handleAdminSettings,
+  handleAdminSettingsAdmin,
+  handleAdminSettingsCancel,
+  handleAdminSettingsChannel,
+  handleAdminSettingsContact,
+  handleAdminSettingsInput,
+  handleAdminSettingsPayment,
+  handleAdminSettingsStartEdit,
+  handleAdminSettingsToggle,
+} from "./handlers/adminSettings";
+import { SETTINGS_KEYS } from "./database/settings";
 import {
   handleAdminCustomers,
   handleAdminCustomerView,
@@ -85,7 +96,7 @@ export function createBot(config: EnvConfig): Bot {
   getDatabase();
 
   const bot = new Bot(config.botToken);
-  const inviteLinkService = new InviteLinkService(bot.api, config.channelId);
+  const inviteLinkService = new InviteLinkService(bot.api, config);
   const adminOnly = createAdminMiddleware(config);
 
   bot.use(trackTelegramUser);
@@ -279,6 +290,63 @@ export function createBot(config: EnvConfig): Bot {
   bot.callbackQuery(CB.ADMIN_SETTINGS, adminOnly, (ctx) =>
     handleAdminSettings(ctx, config, inviteLinkService)
   );
+  bot.callbackQuery(CB.ADMIN_SET_CHANNEL, adminOnly, (ctx) =>
+    handleAdminSettingsChannel(ctx, config)
+  );
+  bot.callbackQuery(CB.ADMIN_SET_CONTACT, adminOnly, (ctx) =>
+    handleAdminSettingsContact(ctx, config)
+  );
+  bot.callbackQuery(CB.ADMIN_SET_PAY, adminOnly, (ctx) =>
+    handleAdminSettingsPayment(ctx, config)
+  );
+  bot.callbackQuery(CB.ADMIN_SET_ADMIN, adminOnly, (ctx) =>
+    handleAdminSettingsAdmin(ctx, config)
+  );
+  bot.callbackQuery(CB.ADMIN_SET_CH_EDIT, adminOnly, (ctx) =>
+    handleAdminSettingsStartEdit(ctx, "channel_id")
+  );
+  bot.callbackQuery(CB.ADMIN_SET_CT_EDIT, adminOnly, (ctx) =>
+    handleAdminSettingsStartEdit(ctx, "contact_username")
+  );
+  bot.callbackQuery(CB.ADMIN_SET_PAY_CCP, adminOnly, (ctx) =>
+    handleAdminSettingsStartEdit(ctx, "ccp_account_info")
+  );
+  bot.callbackQuery(CB.ADMIN_SET_PAY_RIP, adminOnly, (ctx) =>
+    handleAdminSettingsStartEdit(ctx, "baridimob_rip")
+  );
+  bot.callbackQuery(CB.ADMIN_SET_PAY_NAME, adminOnly, (ctx) =>
+    handleAdminSettingsStartEdit(ctx, "payment_account_name")
+  );
+  bot.callbackQuery(CB.ADMIN_SET_PAY_RDP, adminOnly, (ctx) =>
+    handleAdminSettingsStartEdit(ctx, "redotpay_payment_info")
+  );
+  bot.callbackQuery(CB.ADMIN_SET_CH_ON, adminOnly, (ctx) =>
+    handleAdminSettingsToggle(ctx, config, SETTINGS_KEYS.CHANNEL_ENABLED, true, "channel")
+  );
+  bot.callbackQuery(CB.ADMIN_SET_CH_OFF, adminOnly, (ctx) =>
+    handleAdminSettingsToggle(ctx, config, SETTINGS_KEYS.CHANNEL_ENABLED, false, "channel")
+  );
+  bot.callbackQuery(CB.ADMIN_SET_CT_ON, adminOnly, (ctx) =>
+    handleAdminSettingsToggle(ctx, config, SETTINGS_KEYS.CONTACT_ENABLED, true, "contact")
+  );
+  bot.callbackQuery(CB.ADMIN_SET_CT_OFF, adminOnly, (ctx) =>
+    handleAdminSettingsToggle(ctx, config, SETTINGS_KEYS.CONTACT_ENABLED, false, "contact")
+  );
+  bot.callbackQuery(CB.ADMIN_SET_PAY_CCP_ON, adminOnly, (ctx) =>
+    handleAdminSettingsToggle(ctx, config, SETTINGS_KEYS.CCP_ENABLED, true, "payment")
+  );
+  bot.callbackQuery(CB.ADMIN_SET_PAY_CCP_OFF, adminOnly, (ctx) =>
+    handleAdminSettingsToggle(ctx, config, SETTINGS_KEYS.CCP_ENABLED, false, "payment")
+  );
+  bot.callbackQuery(CB.ADMIN_SET_PAY_RDP_ON, adminOnly, (ctx) =>
+    handleAdminSettingsToggle(ctx, config, SETTINGS_KEYS.REDOTPAY_ENABLED, true, "payment")
+  );
+  bot.callbackQuery(CB.ADMIN_SET_PAY_RDP_OFF, adminOnly, (ctx) =>
+    handleAdminSettingsToggle(ctx, config, SETTINGS_KEYS.REDOTPAY_ENABLED, false, "payment")
+  );
+  bot.callbackQuery(CB.ADMIN_SET_CANCEL, adminOnly, (ctx) =>
+    handleAdminSettingsCancel(ctx, config, inviteLinkService)
+  );
 
   bot.callbackQuery(CB.MY_PRODUCTS, handleMyProductsOpen);
   bot.callbackQuery(CB.MY_PRODUCTS_BACK, handleMyProductsBack);
@@ -315,6 +383,11 @@ export function createBot(config: EnvConfig): Bot {
 
       const handledPromo = await handleAdminPromoInput(ctx);
       if (handledPromo) {
+        return;
+      }
+
+      const handledSettings = await handleAdminSettingsInput(ctx, config);
+      if (handledSettings) {
         return;
       }
     }
