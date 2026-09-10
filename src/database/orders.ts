@@ -4,6 +4,7 @@ import { grantVideoEntitlement } from "./entitlements";
 import type { CreateOrderInput, Order, OrderStatus, PaymentMethod } from "./types";
 import { isPendingOrderStatus } from "./types";
 import { formatOrderNumber } from "../utils/orderNumber";
+import { normalizePrice } from "../utils/price";
 
 interface OrderRow {
   id: number;
@@ -22,6 +23,7 @@ interface OrderRow {
   payment_proof_media_kind: string | null;
   payment_submitted_at: string | null;
   payment_reviewed_at: string | null;
+  purchase_price: number | null;
 }
 
 function normalizeOrderStatus(status: string): OrderStatus {
@@ -66,6 +68,7 @@ function mapRow(row: OrderRow): Order {
     paymentProofMediaKind: normalizeProofKind(row.payment_proof_media_kind),
     paymentSubmittedAt: row.payment_submitted_at ?? null,
     paymentReviewedAt: row.payment_reviewed_at ?? null,
+    purchasePrice: normalizePrice(row.purchase_price),
   };
 }
 
@@ -86,8 +89,8 @@ function getAllRows(
 export function createOrder(input: CreateOrderInput): Order {
   const db = getDatabase();
   const stmt = db.prepare(`
-    INSERT INTO orders (telegram_user_id, telegram_username, product_id, content_id, notes, status)
-    VALUES (?, ?, ?, ?, ?, 'awaiting_payment')
+    INSERT INTO orders (telegram_user_id, telegram_username, product_id, content_id, notes, status, purchase_price)
+    VALUES (?, ?, ?, ?, ?, 'awaiting_payment', ?)
   `);
 
   const result = stmt.run(
@@ -95,7 +98,8 @@ export function createOrder(input: CreateOrderInput): Order {
     input.telegramUsername,
     input.productId,
     input.contentId,
-    input.notes ?? null
+    input.notes ?? null,
+    normalizePrice(input.purchasePrice)
   );
 
   const orderId = Number(result.lastInsertRowid);

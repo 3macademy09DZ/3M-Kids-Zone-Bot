@@ -194,6 +194,7 @@ export async function handleConfirmOrder(
       telegramUsername: user.username ?? null,
       productId: item.productId,
       contentId: item.id,
+      purchasePrice: item.price,
     });
 
     logger.info(

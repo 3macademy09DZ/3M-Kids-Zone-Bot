@@ -5,6 +5,7 @@ import type {
   CreateContentInput,
   ProductContentItem,
 } from "./contentTypes";
+import { normalizePrice } from "../utils/price";
 
 interface ContentRow {
   id: number;
@@ -48,7 +49,7 @@ function mapRow(row: ContentRow): ProductContentItem {
     mediaKind: row.media_kind as ProductContentItem["mediaKind"],
     fileName: row.file_name,
     mimeType: row.mime_type,
-    price: row.price ?? null,
+    price: normalizePrice(row.price),
     sortOrder: row.sort_order,
     createdAt: row.created_at,
   };

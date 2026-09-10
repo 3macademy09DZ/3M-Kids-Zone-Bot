@@ -75,7 +75,12 @@ function getOrderItemLabel(order: Order): {
   price: string;
 } {
   if (order.contentId == null) {
-    return { emoji: "🎬", label: "العنصر", title: "غير محدد", price: "غير محدد" };
+    return {
+      emoji: "🎬",
+      label: "العنصر",
+      title: "غير محدد",
+      price: formatPriceDzd(order.purchasePrice),
+    };
   }
 
   const item = getContentItemById(order.contentId);
@@ -84,7 +89,7 @@ function getOrderItemLabel(order: Order): {
       emoji: "🎬",
       label: "العنصر",
       title: `#${order.contentId}`,
-      price: "غير محدد",
+      price: formatPriceDzd(order.purchasePrice),
     };
   }
 
@@ -92,7 +97,7 @@ function getOrderItemLabel(order: Order): {
     emoji: CONTENT_TYPE_EMOJI[item.contentType],
     label: CONTENT_TYPE_ITEM_LABEL[item.contentType],
     title: item.titleAr,
-    price: formatPriceDzd(item.price),
+    price: formatPriceDzd(order.purchasePrice ?? item.price),
   };
 }
 
