@@ -36,15 +36,45 @@ function escapeHtml(text: string): string {
     .replace(/>/g, "&gt;");
 }
 
+function parseCcpAccountInfo(
+  raw: string
+): { number: string; cle: string } | null {
+  const match = raw
+    .trim()
+    .match(/^(\d+)\s*(?:clé|cle|key)\s*[:\-–]?\s*(\d+)$/i);
+  if (!match) {
+    return null;
+  }
+  return { number: match[1], cle: match[2] };
+}
+
+function formatCcpAccountBlock(raw: string | undefined): string {
+  if (!raw) {
+    return "🏦 <b>CCP</b>\nغير مُعدّ";
+  }
+
+  const parsed = parseCcpAccountInfo(raw);
+  if (!parsed) {
+    return `🏦 <b>CCP</b>\n<code>${escapeHtml(raw)}</code>`;
+  }
+
+  return (
+    "🏦 <b>CCP</b>\n" +
+    "رقم CCP:\n" +
+    `<code>${escapeHtml(parsed.number)}</code>\n` +
+    "Clé:\n" +
+    `<code>${escapeHtml(parsed.cle)}</code>`
+  );
+}
+
 function buildCcpPaymentInfo(config: EnvConfig): string {
   const name = config.paymentAccountName ?? "غير مُعدّ";
-  const account = config.ccpAccountInfo ?? "غير مُعدّ";
   const rip = config.baridimobRip ?? "غير مُعدّ";
 
   return (
     "💳 <b>الدفع عبر CCP / BaridiMob</b>\n\n" +
-    `👤 الاسم: ${escapeHtml(name)}\n` +
-    `🏦 الحساب: ${escapeHtml(account)}\n` +
+    `${formatCcpAccountBlock(config.ccpAccountInfo)}\n` +
+    `👤 صاحب الحساب:\n${escapeHtml(name)}\n` +
     `🔢 RIP: ${escapeHtml(rip)}\n\n` +
     "بعد التحويل، أرسل الآن <b>صورة إثبات الدفع</b> (Screenshot)."
   );
