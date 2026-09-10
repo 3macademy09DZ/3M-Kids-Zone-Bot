@@ -79,6 +79,10 @@ export function runMigrations(database: DatabaseSync): void {
       { name: "payment_reviewed_at", ddl: "ALTER TABLE orders ADD COLUMN payment_reviewed_at TEXT" },
       { name: "order_number", ddl: "ALTER TABLE orders ADD COLUMN order_number TEXT" },
       { name: "purchase_price", ddl: "ALTER TABLE orders ADD COLUMN purchase_price INTEGER" },
+      { name: "promo_code", ddl: "ALTER TABLE orders ADD COLUMN promo_code TEXT" },
+      { name: "original_price", ddl: "ALTER TABLE orders ADD COLUMN original_price INTEGER" },
+      { name: "discount_amount", ddl: "ALTER TABLE orders ADD COLUMN discount_amount INTEGER" },
+      { name: "promo_counted", ddl: "ALTER TABLE orders ADD COLUMN promo_counted INTEGER NOT NULL DEFAULT 0" },
     ];
 
     for (const column of orderColumns) {
@@ -127,4 +131,18 @@ export function runMigrations(database: DatabaseSync): void {
       FROM (SELECT DISTINCT telegram_user_id FROM orders) o;
     `);
   }
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS promo_codes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT NOT NULL UNIQUE,
+      discount_type TEXT NOT NULL CHECK(discount_type IN ('percent', 'fixed')),
+      discount_value INTEGER NOT NULL,
+      expires_at TEXT,
+      max_uses INTEGER,
+      used_count INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
 }

@@ -1,10 +1,11 @@
 import { getDatabase } from "./db";
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import { grantVideoEntitlement } from "./entitlements";
+import { consumePromoUseForOrder } from "./promos";
 import type { CreateOrderInput, Order, OrderStatus, PaymentMethod } from "./types";
 import { isPendingOrderStatus } from "./types";
 import { formatOrderNumber } from "../utils/orderNumber";
-import { normalizePrice } from "../utils/price";
+import { normalizeMoneyAmount } from "../utils/price";
 
 interface OrderRow {
   id: number;
@@ -24,6 +25,10 @@ interface OrderRow {
   payment_submitted_at: string | null;
   payment_reviewed_at: string | null;
   purchase_price: number | null;
+  promo_code: string | null;
+  original_price: number | null;
+  discount_amount: number | null;
+  promo_counted: number | null;
 }
 
 function normalizeOrderStatus(status: string): OrderStatus {
@@ -68,7 +73,11 @@ function mapRow(row: OrderRow): Order {
     paymentProofMediaKind: normalizeProofKind(row.payment_proof_media_kind),
     paymentSubmittedAt: row.payment_submitted_at ?? null,
     paymentReviewedAt: row.payment_reviewed_at ?? null,
-    purchasePrice: normalizePrice(row.purchase_price),
+    purchasePrice: normalizeMoneyAmount(row.purchase_price),
+    promoCode: row.promo_code?.trim() ? row.promo_code.trim() : null,
+    originalPrice: normalizeMoneyAmount(row.original_price),
+    discountAmount: normalizeMoneyAmount(row.discount_amount),
+    promoCounted: Number(row.promo_counted ?? 0) === 1,
   };
 }
 
@@ -89,8 +98,20 @@ function getAllRows(
 export function createOrder(input: CreateOrderInput): Order {
   const db = getDatabase();
   const stmt = db.prepare(`
-    INSERT INTO orders (telegram_user_id, telegram_username, product_id, content_id, notes, status, purchase_price)
-    VALUES (?, ?, ?, ?, ?, 'awaiting_payment', ?)
+    INSERT INTO orders (
+      telegram_user_id,
+      telegram_username,
+      product_id,
+      content_id,
+      notes,
+      status,
+      purchase_price,
+      promo_code,
+      original_price,
+      discount_amount,
+      promo_counted
+    )
+    VALUES (?, ?, ?, ?, ?, 'awaiting_payment', ?, ?, ?, ?, 0)
   `);
 
   const result = stmt.run(
@@ -99,7 +120,10 @@ export function createOrder(input: CreateOrderInput): Order {
     input.productId,
     input.contentId,
     input.notes ?? null,
-    normalizePrice(input.purchasePrice)
+    normalizeMoneyAmount(input.purchasePrice),
+    input.promoCode?.trim() ? input.promoCode.trim() : null,
+    normalizeMoneyAmount(input.originalPrice),
+    normalizeMoneyAmount(input.discountAmount)
   );
 
   const orderId = Number(result.lastInsertRowid);
@@ -216,14 +240,23 @@ export type ApproveOrderResult =
 
 function grantApprovedOrder(order: Order): Order | null {
   const db = getDatabase();
-  db.prepare(
-    `
-      UPDATE orders
-      SET status = 'approved',
-          payment_reviewed_at = datetime('now')
-      WHERE id = ?
-    `
-  ).run(order.id);
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.prepare(
+      `
+        UPDATE orders
+        SET status = 'approved',
+            payment_reviewed_at = datetime('now')
+        WHERE id = ?
+      `
+    ).run(order.id);
+
+    consumePromoUseForOrder(order.id, order.promoCode);
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
 
   const updated = getOrderById(order.id);
   if (updated?.contentId != null) {

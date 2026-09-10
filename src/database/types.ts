@@ -95,6 +95,10 @@ export interface Order {
   paymentSubmittedAt: string | null;
   paymentReviewedAt: string | null;
   purchasePrice: number | null;
+  promoCode: string | null;
+  originalPrice: number | null;
+  discountAmount: number | null;
+  promoCounted: boolean;
 }
 
 export interface CreateOrderInput {
@@ -103,5 +107,8 @@ export interface CreateOrderInput {
   productId: string;
   contentId: number;
   purchasePrice?: number | null;
+  promoCode?: string | null;
+  originalPrice?: number | null;
+  discountAmount?: number | null;
   notes?: string | null;
 }

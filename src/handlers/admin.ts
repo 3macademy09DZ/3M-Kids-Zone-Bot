@@ -38,6 +38,7 @@ import {
 import { buildPurchaseReceipt, getOrderDisplayNumber } from "../utils/orderNumber";
 import { formatPriceDzd } from "../utils/price";
 import { logger } from "../utils/logger";
+import { clearAdminPromoSession } from "../state/adminPromoSession";
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   pending: "⏳ قيد المراجعة",
@@ -169,6 +170,12 @@ export function buildOrderMessage(order: Order): string {
     ? PAYMENT_METHOD_LABELS[order.paymentMethod]
     : "غير محدد";
   const proofLabel = order.paymentProofFileId ? "مرفق أدناه" : "غير موجود";
+  const promoBlock = order.promoCode
+    ? `🎟️ كود التخفيض: ${escapeHtml(order.promoCode)}\n` +
+      `💰 السعر الأصلي: ${escapeHtml(formatPriceDzd(order.originalPrice))}\n` +
+      `💸 التخفيض: ${escapeHtml(formatPriceDzd(order.discountAmount))}\n` +
+      `✅ السعر النهائي: ${escapeHtml(formatPriceDzd(order.purchasePrice))}\n`
+    : `💰 السعر: ${escapeHtml(item.price)}\n`;
 
   return (
     `📦 <b>طلب ${escapeHtml(getOrderDisplayNumber(order))}</b>\n\n` +
@@ -177,7 +184,7 @@ export function buildOrderMessage(order: Order): string {
     `🆔 Telegram ID: <code>${order.telegramUserId}</code>\n` +
     `📦 الحزمة: ${escapeHtml(productName)}\n` +
     `${item.emoji} ${escapeHtml(item.label)}: ${escapeHtml(item.title)}\n` +
-    `💰 السعر: ${escapeHtml(item.price)}\n` +
+    promoBlock +
     `💳 طريقة الدفع: ${escapeHtml(paymentMethod)}\n` +
     `🧾 إثبات الدفع: ${escapeHtml(proofLabel)}\n` +
     `📅 التاريخ: ${escapeHtml(order.createdAt)}`
@@ -286,6 +293,9 @@ export async function handleAdminCommand(ctx: Context): Promise<void> {
 
 export async function handleAdminBack(ctx: Context): Promise<void> {
   await ctx.answerCallbackQuery();
+  if (ctx.from) {
+    clearAdminPromoSession(ctx.from.id);
+  }
   await ctx.editMessageText("🔐 *لوحة الإدارة — 3M Kids Zone*", {
     parse_mode: "Markdown",
     reply_markup: adminMenuKeyboard(),

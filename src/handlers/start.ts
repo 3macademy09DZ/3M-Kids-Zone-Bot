@@ -2,6 +2,7 @@ import type { Context } from "grammy";
 import { formatContactLink } from "../config/env";
 import type { EnvConfig } from "../config/env";
 import { backToMainKeyboard, mainMenuKeyboard } from "../keyboards/menus";
+import { clearCheckoutSession } from "../state/checkoutSession";
 
 export const WELCOME_MESSAGE =
   "👋 أهلاً وسهلاً بك في *3M Kids Zone*!\n\n" +
@@ -9,6 +10,9 @@ export const WELCOME_MESSAGE =
   "اختر أحد الخيارات أدناه للبدء:";
 
 export async function handleStart(ctx: Context): Promise<void> {
+  if (ctx.from) {
+    clearCheckoutSession(ctx.from.id);
+  }
   await ctx.reply(WELCOME_MESSAGE, {
     parse_mode: "Markdown",
     reply_markup: mainMenuKeyboard(),
@@ -17,6 +21,9 @@ export async function handleStart(ctx: Context): Promise<void> {
 
 export async function handleBackToMain(ctx: Context): Promise<void> {
   await ctx.answerCallbackQuery();
+  if (ctx.from) {
+    clearCheckoutSession(ctx.from.id);
+  }
   await ctx.editMessageText(WELCOME_MESSAGE, {
     parse_mode: "Markdown",
     reply_markup: mainMenuKeyboard(),

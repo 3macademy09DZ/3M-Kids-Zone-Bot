@@ -29,6 +29,7 @@ import {
   getAdminContentSession,
   setAdminContentSession,
 } from "../state/adminContentSession";
+import { clearAdminPromoSession } from "../state/adminPromoSession";
 import {
   adminProductSectionsKeyboard,
   adminSectionKeyboard,
@@ -259,6 +260,7 @@ export async function handleAdminContentAdd(
     return;
   }
 
+  clearAdminPromoSession(adminId);
   setAdminContentSession(adminId, {
     productId,
     contentType,
@@ -321,6 +323,7 @@ export async function handleAdminContentRename(
     return;
   }
 
+  clearAdminPromoSession(adminId);
   setAdminContentSession(adminId, {
     productId: item.productId,
     contentType: item.contentType,
@@ -354,6 +357,7 @@ export async function handleAdminContentPrice(
     return;
   }
 
+  clearAdminPromoSession(adminId);
   setAdminContentSession(adminId, {
     productId: item.productId,
     contentType: item.contentType,
