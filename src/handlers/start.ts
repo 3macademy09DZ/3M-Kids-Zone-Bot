@@ -4,6 +4,7 @@ import type { EnvConfig } from "../config/env";
 import { isContactActive, resolveAppSettings } from "../config/appSettings";
 import { backToMainKeyboard, mainMenuKeyboard } from "../keyboards/menus";
 import { clearCheckoutSession } from "../state/checkoutSession";
+import { clearSupportSession } from "../state/supportSession";
 
 export const WELCOME_MESSAGE =
   "👋 أهلاً وسهلاً بك في *3M Kids Zone*!\n\n" +
@@ -20,6 +21,7 @@ function mainMenu() {
 export async function handleStart(ctx: Context): Promise<void> {
   if (ctx.from) {
     clearCheckoutSession(ctx.from.id);
+    clearSupportSession(ctx.from.id);
   }
   await ctx.reply(WELCOME_MESSAGE, {
     parse_mode: "Markdown",
@@ -31,6 +33,7 @@ export async function handleBackToMain(ctx: Context): Promise<void> {
   await ctx.answerCallbackQuery();
   if (ctx.from) {
     clearCheckoutSession(ctx.from.id);
+    clearSupportSession(ctx.from.id);
   }
   await ctx.editMessageText(WELCOME_MESSAGE, {
     parse_mode: "Markdown",

@@ -1,11 +1,6 @@
 import type { Context } from "grammy";
 import type { EnvConfig } from "../config/env";
-import { formatContactLink } from "../config/env";
-import {
-  isContactActive,
-  paymentMethodOptions,
-  resolveAppSettings,
-} from "../config/appSettings";
+import { paymentMethodOptions, resolveAppSettings } from "../config/appSettings";
 import { helpMenuKeyboard, helpTopicBackKeyboard } from "../keyboards/menus";
 
 const HELP_MENU_TEXT =
@@ -63,47 +58,10 @@ function buildPayHelpText(config: EnvConfig): string {
   );
 }
 
-function buildProblemHelpText(config: EnvConfig): {
-  text: string;
-  disablePreview: boolean;
-} {
-  const settings = resolveAppSettings(config);
-  const contactLink = formatContactLink(settings.contactUsername);
-
-  if (isContactActive(settings) && contactLink && settings.contactUsername) {
-    const displayName = settings.contactUsername.startsWith("@")
-      ? settings.contactUsername
-      : `@${settings.contactUsername}`;
-    return {
-      text:
-        "❓ *لدي مشكلة*\n\n" +
-        "يسعدنا مساعدتك. تواصل معنا عبر الوسيلة التالية:\n\n" +
-        `👤 ${displayName}\n` +
-        `🔗 [اضغط هنا للتواصل](${contactLink})`,
-      disablePreview: true,
-    };
-  }
-
-  return {
-    text:
-      "❓ *لدي مشكلة*\n\n" +
-      "⚠️ خدمة التواصل غير مفعّلة حالياً.\n" +
-      "يرجى المحاولة لاحقاً، أو انتظار تفعيل وسيلة التواصل من الإدارة.",
-    disablePreview: false,
-  };
-}
-
-async function showHelpText(
-  ctx: Context,
-  text: string,
-  options?: { disablePreview?: boolean }
-): Promise<void> {
+async function showHelpText(ctx: Context, text: string): Promise<void> {
   await ctx.editMessageText(text, {
     parse_mode: "Markdown",
     reply_markup: helpTopicBackKeyboard(),
-    ...(options?.disablePreview
-      ? { link_preview_options: { is_disabled: true } }
-      : {}),
   });
 }
 
@@ -136,15 +94,4 @@ export async function handleHelpPurchases(ctx: Context): Promise<void> {
 export async function handleHelpPromo(ctx: Context): Promise<void> {
   await ctx.answerCallbackQuery();
   await showHelpText(ctx, HELP_PROMO_TEXT);
-}
-
-export async function handleHelpProblem(
-  ctx: Context,
-  config: EnvConfig
-): Promise<void> {
-  await ctx.answerCallbackQuery();
-  const problem = buildProblemHelpText(config);
-  await showHelpText(ctx, problem.text, {
-    disablePreview: problem.disablePreview,
-  });
 }
