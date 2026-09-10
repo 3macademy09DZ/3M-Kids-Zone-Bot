@@ -10,6 +10,14 @@ import type { ContentType } from "./database/contentTypes";
 
 import { handleStart, handleBackToMain, handleAboutContent, handleContact } from "./handlers/start";
 import {
+  handleHelpBuy,
+  handleHelpMenu,
+  handleHelpPay,
+  handleHelpProblem,
+  handleHelpPromo,
+  handleHelpPurchases,
+} from "./handlers/help";
+import {
   handleOrderMenu,
   handleProductSelect,
   handleVideoSelect,
@@ -110,6 +118,12 @@ export function createBot(config: EnvConfig): Bot {
   bot.callbackQuery(CB.BACK_MAIN, handleBackToMain);
   bot.callbackQuery(CB.ABOUT, handleAboutContent);
   bot.callbackQuery(CB.CONTACT, (ctx) => handleContact(ctx, config));
+  bot.callbackQuery(CB.HELP, handleHelpMenu);
+  bot.callbackQuery(CB.HELP_BUY, handleHelpBuy);
+  bot.callbackQuery(CB.HELP_PAY, (ctx) => handleHelpPay(ctx, config));
+  bot.callbackQuery(CB.HELP_PURCHASES, handleHelpPurchases);
+  bot.callbackQuery(CB.HELP_PROMO, handleHelpPromo);
+  bot.callbackQuery(CB.HELP_PROBLEM, (ctx) => handleHelpProblem(ctx, config));
   bot.callbackQuery(CB.ORDER, handleOrderMenu);
 
   bot.callbackQuery(new RegExp(`^${CB.ORDER_PRODUCT}(.+)$`), async (ctx) => {
