@@ -2,14 +2,14 @@ import type { Context } from "grammy";
 import type { InlineKeyboard } from "grammy";
 import type { EnvConfig } from "../config/env";
 import { resolveAppSettings } from "../config/appSettings";
-import { setSettingOverride, SETTINGS_KEYS } from "../database/settings";
+import { deleteSettingOverride, getSettingOverride, setSettingOverride, SETTINGS_KEYS } from "../database/settings";
 import {
   formatUserDisplayName,
   formatUsernameHandle,
   getTelegramUserById,
 } from "../database/users";
 import {
-  adminSettingsBackKeyboard,
+  adminSettingsAdminKeyboard,
   adminSettingsCancelKeyboard,
   adminSettingsChannelKeyboard,
   adminSettingsContactKeyboard,
@@ -164,6 +164,10 @@ async function showAfterSave(
     await showContact(ctx, config);
     return;
   }
+  if (field === "admin_username") {
+    await showAdmin(ctx, config);
+    return;
+  }
   await showPayment(ctx, config);
 }
 
@@ -203,14 +207,15 @@ export async function handleAdminSettingsPayment(
   await showPayment(ctx, config);
 }
 
-export async function handleAdminSettingsAdmin(
-  ctx: Context,
-  config: EnvConfig
-): Promise<void> {
-  await ctx.answerCallbackQuery();
+function storedAdminUsername(): string | undefined {
+  const stored = getSettingOverride(SETTINGS_KEYS.ADMIN_USERNAME)?.trim();
+  return stored ? stored.replace(/^@+/, "") : undefined;
+}
+
+async function showAdmin(ctx: Context, config: EnvConfig): Promise<void> {
   const profile = getTelegramUserById(config.adminTelegramId);
   const name = formatUserDisplayName(profile, config.adminTelegramId);
-  const username = formatUsernameHandle(profile?.username);
+  const username = formatUsernameHandle(storedAdminUsername());
 
   await presentSettingsText(
     ctx,
@@ -221,9 +226,17 @@ export async function handleAdminSettingsAdmin(
       "لا يمكن تعديل رمز البوت أو معرّف المسؤول من هنا.",
     {
       parse_mode: "HTML",
-      reply_markup: adminSettingsBackKeyboard(),
+      reply_markup: adminSettingsAdminKeyboard(Boolean(username)),
     }
   );
+}
+
+export async function handleAdminSettingsAdmin(
+  ctx: Context,
+  config: EnvConfig
+): Promise<void> {
+  await ctx.answerCallbackQuery();
+  await showAdmin(ctx, config);
 }
 
 export async function handleAdminSettingsStartEdit(
@@ -254,6 +267,10 @@ export async function handleAdminSettingsStartEdit(
     baridimob_rip: "✏️ أرسل الآن <b>رقم RIP BaridiMob</b> الجديد.",
     payment_account_name: "✏️ أرسل الآن <b>اسم صاحب الحساب</b>.",
     redotpay_payment_info: "✏️ أرسل الآن <b>معلومات RedotPay</b> الجديدة.",
+    admin_username:
+      "✏️ أرسل الآن <b>Telegram Username</b> للمسؤول.\n" +
+      "يمكنك إرساله مع @ أو بدونه.\n" +
+      "مثال: <code>@3MAcademy</code>",
   };
 
   await presentSettingsText(ctx, prompts[field], {
@@ -280,6 +297,10 @@ export async function handleAdminSettingsCancel(
   }
   if (field === "contact_username") {
     await showContact(ctx, config);
+    return;
+  }
+  if (field === "admin_username") {
+    await showAdmin(ctx, config);
     return;
   }
   if (
@@ -321,6 +342,16 @@ export async function handleAdminSettingsToggle(
   await showPayment(ctx, config);
 }
 
+export async function handleAdminSettingsDeleteAdminUsername(
+  ctx: Context,
+  config: EnvConfig
+): Promise<void> {
+  deleteSettingOverride(SETTINGS_KEYS.ADMIN_USERNAME);
+  logger.info("Admin username setting cleared");
+  await ctx.answerCallbackQuery({ text: "✅ تم حفظ الإعداد بنجاح" });
+  await showAdmin(ctx, config);
+}
+
 export async function handleAdminSettingsInput(
   ctx: Context,
   config: EnvConfig
@@ -360,6 +391,19 @@ export async function handleAdminSettingsInput(
         return true;
       }
       setSettingOverride(SETTINGS_KEYS.CONTACT_USERNAME, username);
+    } else if (session.field === "admin_username") {
+      const username = normalizeContactUsername(raw);
+      if (!username) {
+        await ctx.reply(
+          "❌ اسم المستخدم غير صالح.\nأرسل اسمًا مثل <code>@3MAcademy</code>.",
+          {
+            parse_mode: "HTML",
+            reply_markup: adminSettingsCancelKeyboard(),
+          }
+        );
+        return true;
+      }
+      setSettingOverride(SETTINGS_KEYS.ADMIN_USERNAME, username);
     } else if (session.field === "ccp_account_info") {
       setSettingOverride(SETTINGS_KEYS.CCP_ACCOUNT_INFO, raw);
     } else if (session.field === "baridimob_rip") {
