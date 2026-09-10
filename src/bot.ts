@@ -20,6 +20,7 @@ import {
   handleSupportCancel,
   handleSupportStart,
   handleSupportTicketInput,
+  handleCustomerSupportReplyStart,
 } from "./handlers/support";
 import {
   handleOrderMenu,
@@ -139,6 +140,16 @@ export function createBot(config: EnvConfig): Bot {
   bot.callbackQuery(CB.HELP_PROMO, handleHelpPromo);
   bot.callbackQuery(CB.HELP_PROBLEM, handleSupportStart);
   bot.callbackQuery(CB.HELP_SUPPORT_CANCEL, handleSupportCancel);
+  bot.callbackQuery(
+    new RegExp(`^${CB.SUPPORT_REPLY_CANCEL}(\\d+)$`),
+    handleSupportCancel
+  );
+  bot.callbackQuery(
+    new RegExp(`^${CB.SUPPORT_REPLY}(\\d+)$`),
+    async (ctx) => {
+      await handleCustomerSupportReplyStart(ctx, Number(ctx.match![1]));
+    }
+  );
   bot.callbackQuery(CB.ORDER, handleOrderMenu);
 
   bot.callbackQuery(new RegExp(`^${CB.ORDER_PRODUCT}(.+)$`), async (ctx) => {

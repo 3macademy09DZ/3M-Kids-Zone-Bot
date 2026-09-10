@@ -1,5 +1,6 @@
 export interface SupportSession {
   awaitingMessage: true;
+  ticketId?: number;
 }
 
 const sessions = new Map<number, SupportSession>();

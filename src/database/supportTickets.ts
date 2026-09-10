@@ -16,11 +16,15 @@ export interface SupportTicket {
   status: string;
   createdAt: string;
   closedAt: string | null;
+  lastActivityAt: string | null;
 }
+
+export type SupportReplySender = "admin" | "customer";
 
 export interface SupportReply {
   id: number;
   ticketId: number;
+  sender: SupportReplySender;
   messageText: string | null;
   photoFileId: string | null;
   createdAt: string;
@@ -37,6 +41,7 @@ export interface CreateSupportTicketInput {
 
 export interface CreateSupportReplyInput {
   ticketId: number;
+  sender?: SupportReplySender;
   messageText?: string | null;
   photoFileId?: string | null;
 }
@@ -53,11 +58,13 @@ interface SupportTicketRow {
   status: string;
   created_at: string;
   closed_at?: string | null;
+  last_activity_at?: string | null;
 }
 
 interface SupportReplyRow {
   id: number;
   ticket_id: number;
+  sender?: string | null;
   message_text: string | null;
   photo_file_id: string | null;
   created_at: string;
@@ -89,6 +96,17 @@ export function formatSupportCustomerName(ticket: SupportTicket): string {
   return name || "غير متوفر";
 }
 
+export function supportTicketOwnedBy(
+  ticket: SupportTicket,
+  userId: number
+): boolean {
+  return ticket.telegramUserId === userId;
+}
+
+function normalizeReplySender(value: string | null | undefined): SupportReplySender {
+  return value?.trim().toLowerCase() === "customer" ? "customer" : "admin";
+}
+
 function mapTicketRow(row: SupportTicketRow): SupportTicket {
   return {
     id: row.id,
@@ -104,6 +122,7 @@ function mapTicketRow(row: SupportTicketRow): SupportTicket {
     status: row.status,
     createdAt: row.created_at,
     closedAt: cleanText(row.closed_at),
+    lastActivityAt: cleanText(row.last_activity_at) ?? row.created_at,
   };
 }
 
@@ -111,6 +130,7 @@ function mapReplyRow(row: SupportReplyRow): SupportReply {
   return {
     id: row.id,
     ticketId: Number(row.ticket_id),
+    sender: normalizeReplySender(row.sender),
     messageText: cleanText(row.message_text),
     photoFileId: cleanText(row.photo_file_id),
     createdAt: row.created_at,
@@ -152,9 +172,10 @@ export function createSupportTicket(
           username,
           message_text,
           photo_file_id,
-          status
+          status,
+          last_activity_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, 'open')
+        VALUES (?, ?, ?, ?, ?, ?, 'open', datetime('now'))
       `
     )
     .run(
@@ -230,18 +251,21 @@ export function listSupportTickets(
   const offset = safePage * pageSize;
   const db = getDatabase();
 
+  const orderSql =
+    "ORDER BY datetime(COALESCE(last_activity_at, created_at)) DESC, id DESC";
+
   const rows =
     filter === "all"
       ? getTicketRows(
           db.prepare(
-            "SELECT * FROM support_tickets ORDER BY id DESC LIMIT ? OFFSET ?"
+            `SELECT * FROM support_tickets ${orderSql} LIMIT ? OFFSET ?`
           ),
           pageSize,
           offset
         )
       : getTicketRows(
           db.prepare(
-            "SELECT * FROM support_tickets WHERE status = ? ORDER BY id DESC LIMIT ? OFFSET ?"
+            `SELECT * FROM support_tickets WHERE status = ? ${orderSql} LIMIT ? OFFSET ?`
           ),
           filter,
           pageSize,
@@ -277,26 +301,41 @@ export function closeSupportTicket(id: number): SupportTicket | null {
   return getSupportTicketById(id);
 }
 
+export function touchSupportTicketActivity(ticketId: number): void {
+  const db = getDatabase();
+  db.prepare(
+    `
+      UPDATE support_tickets
+      SET last_activity_at = datetime('now')
+      WHERE id = ?
+    `
+  ).run(ticketId);
+}
+
 export function addSupportReply(input: CreateSupportReplyInput): SupportReply {
   const db = getDatabase();
+  const sender = input.sender === "customer" ? "customer" : "admin";
   const result = db
     .prepare(
       `
         INSERT INTO support_replies (
           ticket_id,
+          sender,
           message_text,
           photo_file_id
         )
-        VALUES (?, ?, ?)
+        VALUES (?, ?, ?, ?)
       `
     )
     .run(
       input.ticketId,
+      sender,
       cleanText(input.messageText),
       cleanText(input.photoFileId)
     );
 
   const replyId = Number(result.lastInsertRowid);
+  touchSupportTicketActivity(input.ticketId);
   const row = getReplyRow(
     db.prepare("SELECT * FROM support_replies WHERE id = ?"),
     replyId
@@ -305,6 +344,35 @@ export function addSupportReply(input: CreateSupportReplyInput): SupportReply {
     throw new Error("Failed to retrieve support reply after creation");
   }
   return mapReplyRow(row);
+}
+
+export function countSupportRepliesBySender(
+  ticketId: number
+): { customer: number; admin: number } {
+  const db = getDatabase();
+  const rows = db
+    .prepare(
+      `
+        SELECT sender, COUNT(*) AS total
+        FROM support_replies
+        WHERE ticket_id = ?
+        GROUP BY sender
+      `
+    )
+    .all(ticketId) as Array<{ sender: string | null; total: number }>;
+
+  let customer = 0;
+  let admin = 0;
+  for (const row of rows) {
+    const total = Number(row.total ?? 0);
+    if (normalizeReplySender(row.sender) === "customer") {
+      customer += total;
+    } else {
+      admin += total;
+    }
+  }
+
+  return { customer, admin };
 }
 
 export function countSupportReplies(ticketId: number): number {

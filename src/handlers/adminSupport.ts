@@ -4,7 +4,7 @@ import type { Message } from "grammy/types";
 import {
   addSupportReply,
   closeSupportTicket,
-  countSupportReplies,
+  countSupportRepliesBySender,
   formatSupportCustomerName,
   getLatestSupportReply,
   getSupportTicketById,
@@ -21,6 +21,7 @@ import {
   adminSupportHubKeyboard,
   adminSupportListKeyboard,
   adminSupportReplyCancelKeyboard,
+  customerSupportReplyKeyboard,
 } from "../keyboards/menus";
 import { clearAdminContentSession } from "../state/adminContentSession";
 import { clearAdminPromoSession } from "../state/adminPromoSession";
@@ -113,18 +114,21 @@ function parseListFilter(raw: string): SupportTicketListFilter | null {
 function buildDetailsText(ticket: SupportTicket): string {
   const username = formatUsernameHandle(ticket.username) ?? "غير متوفر";
   const problem = ticket.messageText ?? "تم إرسال صورة بدون نص.";
-  const replyCount = countSupportReplies(ticket.id);
+  const counts = countSupportRepliesBySender(ticket.id);
+  const customerMessages = counts.customer + 1;
   const lastReply = getLatestSupportReply(ticket.id);
   const statusLabel = isSupportTicketOpen(ticket) ? "مفتوحة" : "مغلقة";
+  const lastActivity = formatApprovalDate(
+    ticket.lastActivityAt ?? lastReply?.createdAt ?? ticket.createdAt
+  );
 
-  let lastReplyBlock = "لا توجد ردود بعد.";
+  let lastMessageBlock = `من العميل: ${escapeHtml(truncate(problem, 300))}`;
   if (lastReply) {
+    const senderLabel = lastReply.sender === "customer" ? "العميل" : "الإدارة";
     const lastText = lastReply.messageText
       ? truncate(lastReply.messageText, 300)
       : "صورة";
-    lastReplyBlock =
-      `${escapeHtml(lastText)}\n` +
-      `تاريخ آخر رد: ${escapeHtml(formatApprovalDate(lastReply.createdAt))}`;
+    lastMessageBlock = `من ${senderLabel}: ${escapeHtml(lastText)}`;
   }
 
   return (
@@ -137,8 +141,10 @@ function buildDetailsText(ticket: SupportTicket): string {
     `🕒 تاريخ الإنشاء: ${escapeHtml(formatApprovalDate(ticket.createdAt))}\n\n` +
     "📝 نص المشكلة الأصلي:\n" +
     `${escapeHtml(truncate(problem, 2500))}\n\n` +
-    `💬 عدد ردود الإدارة: ${replyCount}\n` +
-    `📩 آخر رد:\n${lastReplyBlock}`
+    `💬 عدد رسائل العميل: ${customerMessages}\n` +
+    `🛡️ عدد ردود الإدارة: ${counts.admin}\n` +
+    `📩 آخر رسالة:\n${lastMessageBlock}\n` +
+    `🕒 آخر نشاط: ${escapeHtml(lastActivity)}`
   );
 }
 
@@ -186,15 +192,21 @@ async function sendReplyToCustomer(
   photoFileId: string | null
 ): Promise<void> {
   const text = buildCustomerReplyMessage(ticket.ticketNumber, replyText);
+  const replyMarkup = isSupportTicketOpen(ticket)
+    ? customerSupportReplyKeyboard(ticket.id)
+    : undefined;
 
   if (!photoFileId) {
-    await ctx.api.sendMessage(ticket.telegramUserId, text);
+    await ctx.api.sendMessage(ticket.telegramUserId, text, {
+      reply_markup: replyMarkup,
+    });
     return;
   }
 
   if (text.length <= TELEGRAM_CAPTION_LIMIT) {
     await ctx.api.sendPhoto(ticket.telegramUserId, photoFileId, {
       caption: text,
+      reply_markup: replyMarkup,
     });
     return;
   }
@@ -202,9 +214,9 @@ async function sendReplyToCustomer(
   await ctx.api.sendPhoto(ticket.telegramUserId, photoFileId, {
     caption: `💬 رد من إدارة 3M Kids Zone\n🎫 التذكرة: ${ticket.ticketNumber}`,
   });
-  if (replyText) {
-    await ctx.api.sendMessage(ticket.telegramUserId, text);
-  }
+  await ctx.api.sendMessage(ticket.telegramUserId, text, {
+    reply_markup: replyMarkup,
+  });
 }
 
 export async function handleAdminSupportHub(ctx: Context): Promise<void> {
@@ -473,6 +485,7 @@ export async function handleAdminSupportReplyInput(
   try {
     addSupportReply({
       ticketId: ticket.id,
+      sender: "admin",
       messageText: replyText || null,
       photoFileId,
     });
