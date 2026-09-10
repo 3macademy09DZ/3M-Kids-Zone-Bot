@@ -42,14 +42,21 @@ const METHOD_NAMES: Record<PaymentMethod, string> = {
   redotpay: "RedotPay",
 };
 
+export function formatPaymentMethodName(
+  method: PaymentMethod | null | undefined
+): string {
+  if (!method) {
+    return "غير محدد";
+  }
+  return METHOD_NAMES[method];
+}
+
 export function buildPurchaseReceipt(input: {
   order: Order;
   productName: string;
   priceLabel: string;
 }): string {
-  const method = input.order.paymentMethod
-    ? METHOD_NAMES[input.order.paymentMethod]
-    : "غير محدد";
+  const method = formatPaymentMethodName(input.order.paymentMethod);
 
   return (
     "✅ تم تأكيد الدفع بنجاح\n\n" +

@@ -191,7 +191,7 @@ export function createBot(config: EnvConfig): Bot {
   });
 
   bot.on("message", async (ctx, next) => {
-    const handledProof = await handleCustomerPaymentProof(ctx);
+    const handledProof = await handleCustomerPaymentProof(ctx, config);
     if (handledProof) {
       return;
     }

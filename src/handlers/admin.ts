@@ -1,4 +1,5 @@
 import type { Context } from "grammy";
+import { InlineKeyboard } from "grammy";
 import { isChannelConfigured } from "../config/env";
 import type { EnvConfig } from "../config/env";
 import {
@@ -205,19 +206,76 @@ async function sendPaymentProof(ctx: Context, order: Order): Promise<void> {
   }
 }
 
-async function showAdminOrderDetails(
+function callbackMessageHasMedia(ctx: Context): boolean {
+  const message = ctx.callbackQuery?.message;
+  if (!message || !("date" in message)) {
+    return false;
+  }
+
+  return Boolean(
+    ("photo" in message && message.photo) ||
+      ("document" in message && message.document)
+  );
+}
+
+async function updateAdminOrderDetailsMessage(
   ctx: Context,
   order: Order,
   backSection: AdminOrderSection
 ): Promise<void> {
   const keyboard = adminOrderKeyboard(order, backSection);
+  const text = buildOrderMessage(order);
 
-  await ctx.editMessageText(buildOrderMessage(order), {
-    parse_mode: "HTML",
-    reply_markup: keyboard,
-  });
+  try {
+    if (callbackMessageHasMedia(ctx)) {
+      await ctx.editMessageCaption({
+        caption: text,
+        parse_mode: "HTML",
+        reply_markup: keyboard,
+      });
+      return;
+    }
 
-  await sendPaymentProof(ctx, order);
+    await ctx.editMessageText(text, {
+      parse_mode: "HTML",
+      reply_markup: keyboard,
+    });
+  } catch (error) {
+    logger.error(`Failed to refresh admin order #${order.id} view`, error);
+  }
+}
+
+async function presentAdminText(
+  ctx: Context,
+  text: string,
+  extra: {
+    parse_mode?: "Markdown" | "HTML";
+    reply_markup?: InlineKeyboard;
+  }
+): Promise<void> {
+  if (callbackMessageHasMedia(ctx)) {
+    try {
+      await ctx.editMessageReplyMarkup({ reply_markup: new InlineKeyboard() });
+    } catch {
+      // The proof image can stay; list/hub continue in a new message.
+    }
+    await ctx.reply(text, extra);
+    return;
+  }
+
+  await ctx.editMessageText(text, extra);
+}
+
+async function showAdminOrderDetails(
+  ctx: Context,
+  order: Order,
+  backSection: AdminOrderSection
+): Promise<void> {
+  await updateAdminOrderDetailsMessage(ctx, order, backSection);
+
+  if (!callbackMessageHasMedia(ctx)) {
+    await sendPaymentProof(ctx, order);
+  }
 }
 
 export async function handleAdminCommand(ctx: Context): Promise<void> {
@@ -239,7 +297,7 @@ export async function handleAdminOrders(ctx: Context): Promise<void> {
   await ctx.answerCallbackQuery();
   const counts = countOrdersBySection(getAllOrders());
 
-  await ctx.editMessageText("📦 *الطلبات*\n\nاختر القسم الذي تريد عرضه:", {
+  await presentAdminText(ctx, "📦 *الطلبات*\n\nاختر القسم الذي تريد عرضه:", {
     parse_mode: "Markdown",
     reply_markup: adminOrdersHubKeyboard(counts),
   });
@@ -256,9 +314,13 @@ export async function handleAdminOrderSection(
   const title = ADMIN_ORDER_SECTION_TITLES[section];
 
   if (orders.length === 0) {
-    await ctx.editMessageText(`${title}\n\nلا توجد طلبات في هذا القسم حاليًا.`, {
-      reply_markup: adminEmptyOrderSectionKeyboard(),
-    });
+    await presentAdminText(
+      ctx,
+      `${title}\n\nلا توجد طلبات في هذا القسم حاليًا.`,
+      {
+        reply_markup: adminEmptyOrderSectionKeyboard(),
+      }
+    );
     return;
   }
 
@@ -272,7 +334,8 @@ export async function handleAdminOrderSection(
   const pageNote =
     totalPages > 1 ? `\n\nصفحة ${safePage + 1} من ${totalPages}` : "";
 
-  await ctx.editMessageText(
+  await presentAdminText(
+    ctx,
     `${title} (${orders.length})\n\n` +
       slice.map(buildOrderSummary).join("\n\n") +
       pageNote,
@@ -351,12 +414,7 @@ export async function handleAdminApproveOrder(
   }
 
   const order = getOrderById(orderId) ?? result.order;
-  const keyboard = adminOrderKeyboard(order, backSectionForOrder(order));
-
-  await ctx.editMessageText(buildOrderMessage(order), {
-    parse_mode: "HTML",
-    reply_markup: keyboard,
-  });
+  await updateAdminOrderDetailsMessage(ctx, order, backSectionForOrder(order));
 }
 
 export async function handleAdminAcceptPayment(
@@ -408,11 +466,7 @@ export async function handleAdminAcceptPayment(
   }
 
   const order = getOrderById(orderId) ?? result.order;
-  const keyboard = adminOrderKeyboard(order, backSectionForOrder(order));
-  await ctx.editMessageText(buildOrderMessage(order), {
-    parse_mode: "HTML",
-    reply_markup: keyboard,
-  });
+  await updateAdminOrderDetailsMessage(ctx, order, backSectionForOrder(order));
 }
 
 export async function handleAdminRejectPayment(
@@ -455,11 +509,7 @@ export async function handleAdminRejectPayment(
   }
 
   const order = getOrderById(orderId) ?? result.order;
-  const keyboard = adminOrderKeyboard(order, backSectionForOrder(order));
-  await ctx.editMessageText(buildOrderMessage(order), {
-    parse_mode: "HTML",
-    reply_markup: keyboard,
-  });
+  await updateAdminOrderDetailsMessage(ctx, order, backSectionForOrder(order));
 }
 
 export async function handleAdminCustomers(ctx: Context): Promise<void> {
