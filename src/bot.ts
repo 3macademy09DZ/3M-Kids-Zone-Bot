@@ -14,10 +14,13 @@ import {
   handleVideoSelect,
   handleConfirmOrder,
 } from "./handlers/order";
+import type { AdminOrderSection } from "./database/types";
 import {
   handleAdminCommand,
   handleAdminBack,
   handleAdminOrders,
+  handleAdminOrderSection,
+  handleAdminOrderView,
   handleAdminApproveOrder,
   handleAdminAcceptPayment,
   handleAdminRejectPayment,
@@ -98,6 +101,24 @@ export function createBot(config: EnvConfig): Bot {
 
   bot.callbackQuery(CB.ADMIN_BACK, adminOnly, handleAdminBack);
   bot.callbackQuery(CB.ADMIN_ORDERS, adminOnly, handleAdminOrders);
+  bot.callbackQuery(
+    new RegExp(`^${CB.ADMIN_ORDERS_SECTION}(review|wait|approved|rejected|all)(?::(\\d+))?$`),
+    adminOnly,
+    async (ctx) => {
+      const section = ctx.match![1] as AdminOrderSection;
+      const page = ctx.match![2] ? Number(ctx.match![2]) : 0;
+      await handleAdminOrderSection(ctx, section, page);
+    }
+  );
+  bot.callbackQuery(
+    new RegExp(`^${CB.ADMIN_ORDER_VIEW}(\\d+):(review|wait|approved|rejected|all)$`),
+    adminOnly,
+    async (ctx) => {
+      const orderId = Number(ctx.match![1]);
+      const section = ctx.match![2] as AdminOrderSection;
+      await handleAdminOrderView(ctx, orderId, section);
+    }
+  );
   bot.callbackQuery(new RegExp(`^${CB.ADMIN_APPROVE_ORDER}(\\d+)$`), adminOnly, async (ctx) => {
     const orderId = Number(ctx.match![1]);
     await handleAdminApproveOrder(ctx, orderId);

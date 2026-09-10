@@ -24,6 +24,59 @@ export function isRejectedPaymentStatus(status: string): boolean {
   return status.trim().toLowerCase() === "rejected_payment";
 }
 
+export const ADMIN_ORDER_SECTIONS = [
+  "review",
+  "wait",
+  "approved",
+  "rejected",
+  "all",
+] as const;
+
+export type AdminOrderSection = (typeof ADMIN_ORDER_SECTIONS)[number];
+
+export function getAdminOrderSection(
+  status: string
+): Exclude<AdminOrderSection, "all"> | null {
+  const normalized = status.trim().toLowerCase();
+
+  if (
+    normalized === "payment_pending_review" ||
+    normalized === "pending" ||
+    normalized === "review"
+  ) {
+    return "review";
+  }
+
+  if (normalized === "awaiting_payment") {
+    return "wait";
+  }
+
+  if (normalized === "rejected_payment" || normalized === "cancelled") {
+    return "rejected";
+  }
+
+  if (
+    normalized === "approved" ||
+    normalized === "confirmed" ||
+    normalized === "invite_sent" ||
+    normalized === "completed"
+  ) {
+    return "approved";
+  }
+
+  return null;
+}
+
+export function orderBelongsToAdminSection(
+  status: string,
+  section: AdminOrderSection
+): boolean {
+  if (section === "all") {
+    return true;
+  }
+  return getAdminOrderSection(status) === section;
+}
+
 export interface Order {
   id: number;
   orderNumber: string | null;

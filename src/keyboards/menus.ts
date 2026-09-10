@@ -1,5 +1,5 @@
 import { InlineKeyboard } from "grammy";
-import type { Order } from "../database/types";
+import type { AdminOrderSection, Order } from "../database/types";
 import {
   isPaymentReviewStatus,
   isPendingOrderStatus,
@@ -24,6 +24,8 @@ export const CB = {
   MY_PRODUCTS: "my_products",
   MY_PRODUCT: "my_product:",
   ADMIN_ORDERS: "admin_orders",
+  ADMIN_ORDERS_SECTION: "admin_os:",
+  ADMIN_ORDER_VIEW: "admin_ov:",
   ADMIN_APPROVE_ORDER: "admin_approve_order:",
   ADMIN_CUSTOMERS: "admin_customers",
   ADMIN_INVITES: "admin_invites",
@@ -211,27 +213,78 @@ export function adminBackKeyboard(): InlineKeyboard {
   return new InlineKeyboard().text("↩️ لوحة الإدارة", CB.ADMIN_BACK);
 }
 
-export function adminOrderKeyboard(order: Order): InlineKeyboard {
+export function adminOrdersHubKeyboard(counts: Record<AdminOrderSection, number>): InlineKeyboard {
+  return new InlineKeyboard()
+    .text(`🔎 في انتظار مراجعة الدفع (${counts.review})`, `${CB.ADMIN_ORDERS_SECTION}review`)
+    .row()
+    .text(`⏳ في انتظار الدفع (${counts.wait})`, `${CB.ADMIN_ORDERS_SECTION}wait`)
+    .row()
+    .text(`✅ الطلبات المقبولة (${counts.approved})`, `${CB.ADMIN_ORDERS_SECTION}approved`)
+    .row()
+    .text(`❌ الطلبات المرفوضة (${counts.rejected})`, `${CB.ADMIN_ORDERS_SECTION}rejected`)
+    .row()
+    .text(`📋 كل الطلبات (${counts.all})`, `${CB.ADMIN_ORDERS_SECTION}all`)
+    .row()
+    .text("🔙 رجوع", CB.ADMIN_BACK);
+}
+
+export function adminEmptyOrderSectionKeyboard(): InlineKeyboard {
+  return new InlineKeyboard().text("🔙 رجوع إلى الطلبات", CB.ADMIN_ORDERS);
+}
+
+export function adminOrderSectionListKeyboard(input: {
+  section: AdminOrderSection;
+  orders: { id: number; displayNumber: string }[];
+  page: number;
+  totalPages: number;
+}): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+
+  for (const order of input.orders) {
+    keyboard
+      .text(`📂 فتح ${order.displayNumber}`, `${CB.ADMIN_ORDER_VIEW}${order.id}:${input.section}`)
+      .row();
+  }
+
+  if (input.totalPages > 1) {
+    if (input.page > 0) {
+      keyboard.text("◀️ السابق", `${CB.ADMIN_ORDERS_SECTION}${input.section}:${input.page - 1}`);
+    }
+    if (input.page + 1 < input.totalPages) {
+      keyboard.text("▶️ التالي", `${CB.ADMIN_ORDERS_SECTION}${input.section}:${input.page + 1}`);
+    }
+    keyboard.row();
+  }
+
+  keyboard.text("🔙 رجوع إلى الطلبات", CB.ADMIN_ORDERS);
+  return keyboard;
+}
+
+export function adminOrderKeyboard(
+  order: Order,
+  backSection: AdminOrderSection = "all"
+): InlineKeyboard {
   const keyboard = new InlineKeyboard();
 
   if (isPaymentReviewStatus(order.status) && order.paymentProofFileId) {
     keyboard
       .text("✅ قبول الدفع", `${CB.ADMIN_ACCEPT_PAYMENT}${order.id}`)
       .row()
-      .text("❌ رفض الدفع", `${CB.ADMIN_REJECT_PAYMENT}${order.id}`);
-    return keyboard;
-  }
-
-  if (
+      .text("❌ رفض الدفع", `${CB.ADMIN_REJECT_PAYMENT}${order.id}`)
+      .row();
+  } else if (
     (isPendingOrderStatus(order.status) || order.status === "awaiting_payment") &&
     !order.paymentProofFileId
   ) {
-    keyboard.text(
-      "⚠️ قبول يدوي (بدون إثبات)",
-      `${CB.ADMIN_APPROVE_ORDER}${order.id}`
-    );
+    keyboard
+      .text(
+        "⚠️ قبول يدوي (بدون إثبات)",
+        `${CB.ADMIN_APPROVE_ORDER}${order.id}`
+      )
+      .row();
   }
 
+  keyboard.text("🔙 رجوع إلى الطلبات", `${CB.ADMIN_ORDERS_SECTION}${backSection}`);
   return keyboard;
 }
 
