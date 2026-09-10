@@ -7,9 +7,11 @@ import { clearCheckoutSession } from "../state/checkoutSession";
 import { clearSupportSession } from "../state/supportSession";
 
 export const WELCOME_MESSAGE =
-  "👋 أهلاً وسهلاً بك في *3M Kids Zone*!\n\n" +
-  "نحن نقدّم محتوى تعليمي وتفاعلي مميز للأطفال.\n\n" +
-  "اختر أحد الخيارات أدناه للبدء:";
+  "🌈 أهلاً وسهلاً بكم في 3M Kids Zone!\n\n" +
+  "🎓 فضاء تعليمي ممتع يجمع بين التعلّم، الاكتشاف والإبداع.\n\n" +
+  "نقدّم محتوى تعليميًا وتفاعليًا مميزًا يساعد الأطفال على التعلّم بطريقة ممتعة ومبتكرة. 🧩🎬✨\n\n" +
+  "من خلال البوت يمكنكم طلب المحتوى، الوصول إلى مشترياتكم والاستفادة من خدماتنا بسهولة. 💜\n\n" +
+  "👇 اختاروا أحد الخيارات أدناه للبدء:";
 
 function mainMenu() {
   const settings = resolveAppSettings(getEnvConfig());
