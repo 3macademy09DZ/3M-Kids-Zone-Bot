@@ -23,8 +23,23 @@ import {
   customerSectionItemsKeyboard,
 } from "../utils/productContentView";
 import { logger } from "../utils/logger";
+import {
+  getOwnedContentPriceMap,
+  resolveOwnedItemPrice,
+} from "../utils/ownedPrice";
+import { formatPriceDzd } from "../utils/price";
 
-function groupVideosByPackage(videos: ProductContentItem[]): string {
+function withOwnedPrices<T extends { id: number; price?: number | null }>(
+  items: T[],
+  ownedPrices: Map<number, number>
+): Array<T & { price: number | null }> {
+  return items.map((item) => ({
+    ...item,
+    price: resolveOwnedItemPrice(item, ownedPrices),
+  }));
+}
+
+function groupVideosByPackage(videos: Array<ProductContentItem & { price: number | null }>): string {
   const groups: string[] = [];
 
   for (const product of getAllProducts()) {
@@ -33,7 +48,9 @@ function groupVideosByPackage(videos: ProductContentItem[]): string {
 
     groups.push(`*${product.nameAr}*`);
     for (const video of packVideos) {
-      groups.push(`• ${CONTENT_TYPE_EMOJI[video.contentType]} ${video.titleAr}`);
+      groups.push(
+        `• ${CONTENT_TYPE_EMOJI[video.contentType]} ${video.titleAr} — ${formatPriceDzd(video.price)}`
+      );
     }
     groups.push("");
   }
@@ -43,7 +60,9 @@ function groupVideosByPackage(videos: ProductContentItem[]): string {
   if (leftover.length > 0) {
     groups.push("*حزم أخرى*");
     for (const video of leftover) {
-      groups.push(`• ${CONTENT_TYPE_EMOJI[video.contentType]} ${video.titleAr}`);
+      groups.push(
+        `• ${CONTENT_TYPE_EMOJI[video.contentType]} ${video.titleAr} — ${formatPriceDzd(video.price)}`
+      );
     }
     groups.push("");
   }
@@ -51,7 +70,9 @@ function groupVideosByPackage(videos: ProductContentItem[]): string {
   return groups.join("\n").trimEnd();
 }
 
-function buildMyProductsText(videos: ProductContentItem[]): string {
+function buildMyProductsText(
+  videos: Array<ProductContentItem & { price: number | null }>
+): string {
   return (
     "📦 *منتجاتي*\n\n" +
     "هذه هي العناصر التي اشتريتها:\n\n" +
@@ -88,9 +109,11 @@ export async function handleMyProducts(ctx: Context): Promise<void> {
       return;
     }
 
-    await ctx.reply(buildMyProductsText(videos), {
+    const displayItems = withOwnedPrices(videos, getOwnedContentPriceMap(user.id));
+
+    await ctx.reply(buildMyProductsText(displayItems), {
       parse_mode: "Markdown",
-      reply_markup: myVideosKeyboard(videos),
+      reply_markup: myVideosKeyboard(displayItems),
     });
   } catch (error) {
     logger.error("Failed to fetch purchased videos", error);
@@ -119,9 +142,11 @@ export async function handleMyProductsBack(ctx: Context): Promise<void> {
     return;
   }
 
-  await ctx.editMessageText(buildMyProductsText(videos), {
+  const displayItems = withOwnedPrices(videos, getOwnedContentPriceMap(user.id));
+
+  await ctx.editMessageText(buildMyProductsText(displayItems), {
     parse_mode: "Markdown",
-    reply_markup: myVideosKeyboard(videos),
+    reply_markup: myVideosKeyboard(displayItems),
   });
 }
 
@@ -155,8 +180,10 @@ export async function handleMyProductOpen(
     return;
   }
 
-  const lines = videos.map(
-    (video) => `• ${CONTENT_TYPE_EMOJI[video.contentType]} ${video.titleAr}`
+  const displayItems = withOwnedPrices(videos, getOwnedContentPriceMap(user.id));
+  const lines = displayItems.map(
+    (video) =>
+      `• ${CONTENT_TYPE_EMOJI[video.contentType]} ${video.titleAr} — ${formatPriceDzd(video.price)}`
   );
 
   await ctx.editMessageText(
@@ -166,7 +193,7 @@ export async function handleMyProductOpen(
       "\n\n_اضغط على عنصر لفتحه:_",
     {
       parse_mode: "Markdown",
-      reply_markup: myProductVideosKeyboard(videos),
+      reply_markup: myProductVideosKeyboard(displayItems),
     }
   );
 }
@@ -204,15 +231,24 @@ export async function handleMyContentSection(
     return;
   }
 
+  const displayItems = withOwnedPrices(
+    entitled,
+    getOwnedContentPriceMap(user.id)
+  );
+
   const text = buildSectionContentMessage(
     product.nameAr,
     contentType,
-    entitled
+    displayItems
   );
 
   await ctx.editMessageText(text, {
     parse_mode: "Markdown",
-    reply_markup: customerSectionItemsKeyboard(productId, contentType, entitled),
+    reply_markup: customerSectionItemsKeyboard(
+      productId,
+      contentType,
+      displayItems
+    ),
   });
 }
 

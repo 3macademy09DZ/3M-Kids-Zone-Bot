@@ -315,14 +315,14 @@ export function myProductsKeyboard(productIds: string[]): InlineKeyboard {
 }
 
 export function myVideosKeyboard(
-  items: { id: number; titleAr: string; contentType?: ContentType }[]
+  items: { id: number; titleAr: string; contentType?: ContentType; price?: number | null }[]
 ): InlineKeyboard {
   const keyboard = new InlineKeyboard();
 
   for (const item of items) {
     keyboard
       .text(
-        itemButtonLabel(item.titleAr, item.contentType ?? "video"),
+        itemButtonLabel(item.titleAr, item.contentType ?? "video", item.price),
         `${CB.MY_CONTENT_ITEM}${item.id}`
       )
       .row();
@@ -333,14 +333,14 @@ export function myVideosKeyboard(
 }
 
 export function myProductVideosKeyboard(
-  items: { id: number; titleAr: string; contentType?: ContentType }[]
+  items: { id: number; titleAr: string; contentType?: ContentType; price?: number | null }[]
 ): InlineKeyboard {
   const keyboard = new InlineKeyboard();
 
   for (const item of items) {
     keyboard
       .text(
-        itemButtonLabel(item.titleAr, item.contentType ?? "video"),
+        itemButtonLabel(item.titleAr, item.contentType ?? "video", item.price),
         `${CB.MY_CONTENT_ITEM}${item.id}`
       )
       .row();
