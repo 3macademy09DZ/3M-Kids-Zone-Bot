@@ -1,5 +1,5 @@
 import type { Context } from "grammy";
-import type { Message } from "grammy/types";
+import type { Message, User } from "grammy/types";
 import type { EnvConfig } from "../config/env";
 import { formatContactLink } from "../config/env";
 import { getContentItemById } from "../database/content";
@@ -9,9 +9,10 @@ import {
   setOrderPaymentMethod,
   submitOrderPaymentProof,
 } from "../database/orders";
-import type { PaymentMethod } from "../database/types";
+import type { Order, PaymentMethod } from "../database/types";
 import { getProductById } from "../data/products";
 import {
+  adminPaymentProofNotifyKeyboard,
   backToMainKeyboard,
   paymentMethodKeyboard,
   resubmitPaymentKeyboard,
@@ -21,7 +22,11 @@ import {
   getPaymentProofSession,
   setPaymentProofSession,
 } from "../state/paymentSession";
-import { getOrderDisplayNumber } from "../utils/orderNumber";
+import {
+  formatApprovalDate,
+  formatPaymentMethodName,
+  getOrderDisplayNumber,
+} from "../utils/orderNumber";
 import { formatPriceDzd } from "../utils/price";
 import { logger } from "../utils/logger";
 
@@ -203,8 +208,81 @@ export async function handleResubmitPayment(
   );
 }
 
+function formatCustomerDisplayName(user: User | undefined, order: Order): string {
+  const fullName = [user?.first_name, user?.last_name]
+    .filter((part): part is string => Boolean(part && part.trim()))
+    .join(" ")
+    .trim();
+  const username = order.telegramUsername
+    ? `@${order.telegramUsername}`
+    : user?.username
+      ? `@${user.username}`
+      : null;
+
+  if (fullName && username) {
+    return `${fullName} (${username})`;
+  }
+  if (fullName) {
+    return fullName;
+  }
+  if (username) {
+    return username;
+  }
+  return "غير متوفر";
+}
+
+function buildAdminPaymentProofCaption(order: Order, user: User | undefined): string {
+  const item = order.contentId ? getContentItemById(order.contentId) : null;
+  const product = getProductById(order.productId);
+  const productName = item?.titleAr ?? product?.nameAr ?? order.productId;
+  const price = formatPriceDzd(order.purchasePrice ?? item?.price ?? null);
+
+  return (
+    "🔔 إثبات دفع جديد\n" +
+    `🧾 رقم الطلب: ${getOrderDisplayNumber(order)}\n` +
+    `👤 العميل: ${formatCustomerDisplayName(user, order)}\n` +
+    `🆔 Telegram ID: ${order.telegramUserId}\n` +
+    `📦 المنتج: ${productName}\n` +
+    `💰 السعر: ${price}\n` +
+    `💳 طريقة الدفع: ${formatPaymentMethodName(order.paymentMethod)}\n` +
+    "📌 الحالة: 🔎 في انتظار مراجعة الدفع\n" +
+    `📅 تاريخ إرسال الإثبات: ${formatApprovalDate(order.paymentSubmittedAt)}`
+  );
+}
+
+async function notifyAdminOfPaymentProof(
+  ctx: Context,
+  config: EnvConfig,
+  order: Order
+): Promise<void> {
+  if (!Number.isInteger(config.adminTelegramId) || config.adminTelegramId <= 0) {
+    logger.error("Skipping admin payment-proof notify: invalid admin id");
+    return;
+  }
+
+  const fileId = order.paymentProofFileId;
+  if (!fileId) {
+    logger.error(
+      `Skipping admin payment-proof notify: order #${order.id} has no proof file_id`
+    );
+    return;
+  }
+
+  const options = {
+    caption: buildAdminPaymentProofCaption(order, ctx.from),
+    reply_markup: adminPaymentProofNotifyKeyboard(order.id),
+  };
+
+  if (order.paymentProofMediaKind === "document") {
+    await ctx.api.sendDocument(config.adminTelegramId, fileId, options);
+  } else {
+    await ctx.api.sendPhoto(config.adminTelegramId, fileId, options);
+  }
+}
+
 export async function handleCustomerPaymentProof(
-  ctx: Context
+  ctx: Context,
+  config: EnvConfig
 ): Promise<boolean> {
   const user = ctx.from;
   const message = ctx.message;
@@ -265,6 +343,15 @@ export async function handleCustomerPaymentProof(
         : ""),
     { reply_markup: backToMainKeyboard() }
   );
+
+  try {
+    await notifyAdminOfPaymentProof(ctx, config, updated);
+  } catch (error) {
+    logger.error(
+      `Failed to notify admin about payment proof for order #${updated.id}`,
+      error
+    );
+  }
 
   return true;
 }

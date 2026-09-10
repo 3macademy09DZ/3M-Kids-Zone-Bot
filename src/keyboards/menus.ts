@@ -232,6 +232,15 @@ export function adminEmptyOrderSectionKeyboard(): InlineKeyboard {
   return new InlineKeyboard().text("🔙 رجوع إلى الطلبات", CB.ADMIN_ORDERS);
 }
 
+export function adminPaymentProofNotifyKeyboard(orderId: number): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("✅ قبول الدفع", `${CB.ADMIN_ACCEPT_PAYMENT}${orderId}`)
+    .row()
+    .text("❌ رفض الدفع", `${CB.ADMIN_REJECT_PAYMENT}${orderId}`)
+    .row()
+    .text("📂 فتح تفاصيل الطلب", `${CB.ADMIN_ORDER_VIEW}${orderId}:review`);
+}
+
 export function adminOrderSectionListKeyboard(input: {
   section: AdminOrderSection;
   orders: { id: number; displayNumber: string }[];
