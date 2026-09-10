@@ -28,6 +28,7 @@ export const CB = {
   ADMIN_ORDER_VIEW: "admin_ov:",
   ADMIN_APPROVE_ORDER: "admin_approve_order:",
   ADMIN_CUSTOMERS: "admin_customers",
+  ADMIN_STATS: "admin_stats",
   ADMIN_CUSTOMERS_PAGE: "admin_cu:",
   ADMIN_CUSTOMER_VIEW: "admin_cv:",
   ADMIN_CUSTOMER_PRODUCTS: "admin_cp:",
@@ -140,6 +141,8 @@ export function adminMenuKeyboard(): InlineKeyboard {
     .row()
     .text("👥 العملاء", CB.ADMIN_CUSTOMERS)
     .row()
+    .text("📊 إحصائيات المبيعات", CB.ADMIN_STATS)
+    .row()
     .text("🔗 روابط الدعوة", CB.ADMIN_INVITES)
     .row()
     .text("⚙️ الإعدادات", CB.ADMIN_SETTINGS);
@@ -215,6 +218,13 @@ export function adminContentDeleteConfirmKeyboard(item: {
 
 export function adminBackKeyboard(): InlineKeyboard {
   return new InlineKeyboard().text("↩️ لوحة الإدارة", CB.ADMIN_BACK);
+}
+
+export function adminStatsKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("🔄 تحديث الإحصائيات", CB.ADMIN_STATS)
+    .row()
+    .text("↩️ لوحة الإدارة", CB.ADMIN_BACK);
 }
 
 export function adminOrdersHubKeyboard(counts: Record<AdminOrderSection, number>): InlineKeyboard {

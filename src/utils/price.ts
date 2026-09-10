@@ -28,6 +28,13 @@ export function formatPriceDzd(price: unknown): string {
   return `${normalized} دج`;
 }
 
+export function formatAmountDzd(amount: number): string {
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return "0 دج";
+  }
+  return formatPriceDzd(amount);
+}
+
 export function parsePriceDzd(text: string): number | null {
   const trimmed = text.trim();
   const match = trimmed.match(/^(\d+)\s*(?:دج|DZD)?$/i);

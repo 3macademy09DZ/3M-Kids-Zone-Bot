@@ -12,15 +12,20 @@ export function getOrderDisplayNumber(order: {
   return stored && stored.length > 0 ? stored : formatOrderNumber(order.id);
 }
 
-export function formatApprovalDate(raw: string | null | undefined): string {
+export function parseStoredDate(raw: string | null | undefined): Date | null {
   if (!raw) {
-    return formatDate(new Date());
+    return null;
   }
 
   const normalized = raw.includes("T") ? raw : raw.replace(" ", "T") + "Z";
   const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) {
-    return raw;
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function formatApprovalDate(raw: string | null | undefined): string {
+  const date = parseStoredDate(raw);
+  if (!date) {
+    return raw ? raw : formatDate(new Date());
   }
 
   return formatDate(date);

@@ -159,6 +159,20 @@ export function getPurchasedOrdersByUserId(telegramUserId: number): Order[] {
   return rows.map(mapRow);
 }
 
+export function getAllPurchasedOrders(): Order[] {
+  const db = getDatabase();
+  const placeholders = PURCHASED_STATUSES.map(() => "?").join(", ");
+  const rows = getAllRows(
+    db.prepare(`
+      SELECT * FROM orders
+      WHERE status IN (${placeholders})
+      ORDER BY id DESC
+    `),
+    ...PURCHASED_STATUSES
+  );
+  return rows.map(mapRow);
+}
+
 export function updateOrderStatus(id: number, status: OrderStatus): Order | null {
   const db = getDatabase();
   db.prepare("UPDATE orders SET status = ? WHERE id = ?").run(status, id);
