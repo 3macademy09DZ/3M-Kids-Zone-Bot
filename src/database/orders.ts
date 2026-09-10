@@ -3,9 +3,11 @@ import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import { grantVideoEntitlement } from "./entitlements";
 import type { CreateOrderInput, Order, OrderStatus, PaymentMethod } from "./types";
 import { isPendingOrderStatus } from "./types";
+import { formatOrderNumber } from "../utils/orderNumber";
 
 interface OrderRow {
   id: number;
+  order_number: string | null;
   telegram_user_id: number;
   telegram_username: string | null;
   product_id: string;
@@ -49,6 +51,7 @@ function normalizeProofKind(
 function mapRow(row: OrderRow): Order {
   return {
     id: row.id,
+    orderNumber: row.order_number ?? null,
     telegramUserId: row.telegram_user_id,
     telegramUsername: row.telegram_username,
     productId: row.product_id,
@@ -95,7 +98,13 @@ export function createOrder(input: CreateOrderInput): Order {
     input.notes ?? null
   );
 
-  const order = getOrderById(Number(result.lastInsertRowid));
+  const orderId = Number(result.lastInsertRowid);
+  db.prepare("UPDATE orders SET order_number = ? WHERE id = ? AND (order_number IS NULL OR order_number = '')").run(
+    formatOrderNumber(orderId),
+    orderId
+  );
+
+  const order = getOrderById(orderId);
   if (!order) {
     throw new Error("Failed to retrieve order after creation");
   }

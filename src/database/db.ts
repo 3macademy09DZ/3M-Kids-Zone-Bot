@@ -19,6 +19,7 @@ function initSchema(database: DatabaseSync): void {
   database.exec(`
     CREATE TABLE IF NOT EXISTS orders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_number TEXT,
       telegram_user_id INTEGER NOT NULL,
       telegram_username TEXT,
       product_id TEXT NOT NULL,

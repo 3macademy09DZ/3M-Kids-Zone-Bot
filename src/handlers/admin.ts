@@ -33,6 +33,7 @@ import {
   buildRejectedPaymentMessage,
   PAYMENT_METHOD_LABELS,
 } from "./payment";
+import { buildPurchaseReceipt, getOrderDisplayNumber } from "../utils/orderNumber";
 import { formatPriceDzd } from "../utils/price";
 import { logger } from "../utils/logger";
 
@@ -108,7 +109,7 @@ export function buildOrderMessage(order: Order): string {
   const proofLabel = order.paymentProofFileId ? "مرفق أدناه" : "غير موجود";
 
   return (
-    `📦 <b>طلب #${order.id}</b>\n\n` +
+    `📦 <b>طلب ${escapeHtml(getOrderDisplayNumber(order))}</b>\n\n` +
     `📌 الحالة: ${escapeHtml(getStatusLabel(order.status))}\n` +
     `👤 العميل: ${escapeHtml(username)}\n` +
     `🆔 Telegram ID: <code>${order.telegramUserId}</code>\n` +
@@ -139,11 +140,11 @@ async function sendOrderMessage(ctx: Context, order: Order): Promise<void> {
     try {
       if (order.paymentProofMediaKind === "document") {
         await ctx.api.sendDocument(chatId, order.paymentProofFileId, {
-          caption: `🧾 إثبات الدفع — طلب #${order.id}`,
+          caption: `🧾 إثبات الدفع — ${getOrderDisplayNumber(order)}`,
         });
       } else {
         await ctx.api.sendPhoto(chatId, order.paymentProofFileId, {
-          caption: `🧾 إثبات الدفع — طلب #${order.id}`,
+          caption: `🧾 إثبات الدفع — ${getOrderDisplayNumber(order)}`,
         });
       }
     } catch (error) {
@@ -301,10 +302,14 @@ export async function handleAdminAcceptPayment(
     await ctx.answerCallbackQuery({ text: "✅ تم قبول الدفع." });
 
     try {
+      const item = getOrderItemLabel(result.order);
       await ctx.api.sendMessage(
         result.order.telegramUserId,
-        "✅ تم تأكيد الدفع والموافقة على طلبك\n" +
-          "أصبح المحتوى متاحًا الآن",
+        buildPurchaseReceipt({
+          order: result.order,
+          productName: item.title,
+          priceLabel: item.price,
+        }),
         {
           reply_markup: openMyProductsKeyboard(),
         }

@@ -26,6 +26,7 @@ export function isRejectedPaymentStatus(status: string): boolean {
 
 export interface Order {
   id: number;
+  orderNumber: string | null;
   telegramUserId: number;
   telegramUsername: string | null;
   productId: string;

@@ -18,6 +18,7 @@ import {
   productListKeyboard,
 } from "../keyboards/menus";
 import { userHasVideoAccess } from "../services/contentAccess";
+import { getOrderDisplayNumber } from "../utils/orderNumber";
 import { formatPriceDzd } from "../utils/price";
 import { logger } from "../utils/logger";
 
@@ -201,7 +202,7 @@ export async function handleConfirmOrder(
 
     const text =
       "✅ *تم إنشاء طلبك*\n\n" +
-      `📋 رقم الطلب: \`${order.id}\`\n` +
+      `🧾 رقم الطلب: \`${getOrderDisplayNumber(order)}\`\n` +
       `📦 الحزمة: ${product.nameAr}\n` +
       `${emoji} ${itemLabel}: ${item.titleAr}\n` +
       `💰 السعر: ${formatPriceDzd(item.price)}\n\n` +

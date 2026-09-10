@@ -21,6 +21,7 @@ import {
   getPaymentProofSession,
   setPaymentProofSession,
 } from "../state/paymentSession";
+import { getOrderDisplayNumber } from "../utils/orderNumber";
 import { formatPriceDzd } from "../utils/price";
 import { logger } from "../utils/logger";
 
@@ -256,7 +257,7 @@ export async function handleCustomerPaymentProof(
     "✅ تم استلام إثبات الدفع\n" +
       "⏳ طلبك الآن قيد المراجعة\n" +
       "سيتم إشعارك بعد التحقق من الدفع.\n\n" +
-      `📋 رقم الطلب: ${updated.id}\n` +
+      `🧾 رقم الطلب: ${getOrderDisplayNumber(updated)}\n` +
       `📦 ${product?.nameAr ?? updated.productId}\n` +
       (item
         ? `${CONTENT_TYPE_EMOJI[item.contentType]} ${item.titleAr}\n` +
