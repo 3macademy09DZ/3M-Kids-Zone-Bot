@@ -127,6 +127,7 @@ export function createBot(config: EnvConfig): Bot {
 
   bot.command("start", handleStart);
   bot.command("myproducts", handleMyProducts);
+  bot.command("help", handleHelpMenu);
 
   bot.command("admin", adminOnly, handleAdminCommand);
 
