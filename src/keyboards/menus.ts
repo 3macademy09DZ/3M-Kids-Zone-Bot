@@ -52,6 +52,7 @@ export const CB = {
   ADMIN_CUSTOMER_ORDERS: "admin_co:",
   ADMIN_INVITES: "admin_invites",
   ADMIN_SETTINGS: "admin_settings",
+  ADMIN_BACKUP: "admin_bak",
   ADMIN_BACK: "admin_back",
   ADMIN_CONTENT: "admin_content",
   ADMIN_CONTENT_PRODUCT: "admin_content_product:",
@@ -281,6 +282,8 @@ export function adminMenuKeyboard(): InlineKeyboard {
     .text("📊 إحصائيات المبيعات", CB.ADMIN_STATS)
     .row()
     .text("🎟️ أكواد التخفيض", CB.ADMIN_PROMO)
+    .row()
+    .text("💾 نسخة احتياطية", CB.ADMIN_BACKUP)
     .row()
     .text("🔗 روابط الدعوة", CB.ADMIN_INVITES)
     .row()

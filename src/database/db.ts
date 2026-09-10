@@ -93,6 +93,10 @@ function initSchema(database: DatabaseSync): void {
   runMigrations(database);
 }
 
+export function getDatabasePath(): string {
+  return DB_PATH;
+}
+
 export function getDatabase(): DatabaseSync {
   if (!db) {
     ensureDataDir();
