@@ -1,21 +1,15 @@
 import type { Api } from "grammy";
 import type { ProductContentItem } from "../database/contentTypes";
-import { userHasVideoAccess } from "./contentAccess";
 
 const PROTECTED_CONTENT = { protect_content: true } as const;
 
 export async function deliverOwnedContentItem(
-  api: Api,
-  chatId: number,
-  telegramUserId: number,
-  item: ProductContentItem
+  _api: Api,
+  _chatId: number,
+  _telegramUserId: number,
+  _item: ProductContentItem
 ): Promise<"ok" | "denied"> {
-  if (!userHasVideoAccess(telegramUserId, item.id)) {
-    return "denied";
-  }
-
-  await deliverContentItem(api, chatId, item);
-  return "ok";
+  return "denied";
 }
 
 export async function deliverContentItem(

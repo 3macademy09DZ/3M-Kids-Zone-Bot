@@ -41,6 +41,7 @@ function mapRow(row: EntitlementRow): VideoEntitlement {
   };
 }
 
+/** Kept for existing entitlements and a later Academy account link. Do not call from Telegram checkout. */
 export function grantVideoEntitlement(
   telegramUserId: number,
   contentId: number,

@@ -1,6 +1,5 @@
 import type { Context } from "grammy";
 import type { EnvConfig } from "../config/env";
-import { paymentMethodOptions, resolveAppSettings } from "../config/appSettings";
 import { helpMenuKeyboard, helpTopicBackKeyboard } from "../keyboards/menus";
 
 const HELP_MENU_TEXT =
@@ -8,55 +7,28 @@ const HELP_MENU_TEXT =
   "اختر السؤال المناسب لمعرفة الخطوات بسرعة:";
 
 const HELP_BUY_TEXT =
-  "🛒 *كيف أشتري؟*\n\n" +
-  "اتبع هذه الخطوات داخل البوت:\n\n" +
+  "🛒 *كيف أحصل على المحتوى؟*\n\n" +
+  "هذا البوت مساعد لمنصة 3M Academy.\n\n" +
   "1. من القائمة الرئيسية اضغط «🛒 طلب المحتوى».\n" +
-  "2. اختر الحزمة، ثم اختر الفيديو أو اللعبة/النشاط.\n" +
-  "3. أكّد الطلب.\n" +
-  "4. أكمل الدفع وأرسل صورة إثبات التحويل.\n" +
-  "5. بعد قبول الدفع يظهر المحتوى في «📦 منتجاتي».";
+  "2. اختر الحزمة ثم العنصر لعرض اسمه ونوعه وسعره.\n" +
+  "3. اضغط «🌐 عرض التفاصيل في 3M Academy» عند توفر رابط المنصة.\n\n" +
+  "لا يوجد شراء أو دفع داخل تيليجرام. الشراء والوصول إلى المحتوى سيتم عبر منصة 3M Academy.";
+
+const HELP_PAY_TEXT =
+  "💳 *كيف أدفع؟*\n\n" +
+  "الدفع لم يعد متاحاً داخل تيليجرام.\n" +
+  "لن تظهر تعليمات CCP أو BaridiMob أو RedotPay داخل البوت، ولا يُطلب إثبات دفع هنا.\n\n" +
+  "سيتم إتمام الشراء والدفع لاحقاً عبر منصة 3M Academy.";
 
 const HELP_PURCHASES_TEXT =
-  "📦 *أين أجد مشترياتي؟*\n\n" +
-  "بعد قبول الدفع، افتح «📦 منتجاتي» من القائمة الرئيسية، أو أرسل الأمر /myproducts.\n\n" +
-  "ستجد العناصر التي اشتريتها مرتّبة حسب الحزمة. اضغط على العنصر لفتحه.\n\n" +
-  "إذا لم يظهر المحتوى بعد، فطلبك ما زال قيد المراجعة.";
+  "📦 *أين أجد منتجاتي؟*\n\n" +
+  "افتح «📦 منتجاتي» من القائمة الرئيسية، أو أرسل الأمر /myproducts.\n\n" +
+  "ستظهر العناصر المرتبطة بحسابك إن وُجدت. المحتوى المدفوع لا يُفتح ولا يُرسل من داخل البوت؛ الوصول إليه سيكون عبر منصة 3M Academy.";
 
 const HELP_PROMO_TEXT =
-  "🎟️ *كيف أستخدم كود الخصم؟*\n\n" +
-  "1. ابدأ الشراء واختر المحتوى المطلوب.\n" +
-  "2. اضغط «🎟️ لدي كود تخفيض».\n" +
-  "3. أرسل الكود كنص داخل البوت.\n" +
-  "4. راجع السعر بعد التخفيض ثم أكّد الطلب.\n\n" +
-  "إذا لم يكن لديك كود، اضغط «متابعة بدون كود».\n" +
-  "يُستخدم الكود أثناء إنشاء الطلب فقط، وليس بعد الدفع.";
-
-function buildPayHelpText(config: EnvConfig): string {
-  const methods = paymentMethodOptions(resolveAppSettings(config));
-  const available: string[] = [];
-  if (methods.ccp) {
-    available.push("• CCP / BaridiMob");
-  }
-  if (methods.redotpay) {
-    available.push("• RedotPay");
-  }
-
-  const methodsBlock =
-    available.length > 0
-      ? `طرق الدفع المتاحة حالياً:\n${available.join("\n")}`
-      : "⚠️ طرق الدفع غير مفعّلة حالياً. يمكنك العودة لاحقاً أو استخدام «❓ لدي مشكلة».";
-
-  return (
-    "💳 *كيف أدفع؟*\n\n" +
-    "بعد تأكيد الطلب:\n\n" +
-    "1. اختر طريقة الدفع الظاهرة لك.\n" +
-    "2. نفّذ التحويل حسب التعليمات داخل البوت.\n" +
-    "3. أرسل *صورة إثبات الدفع* (Screenshot).\n" +
-    "4. انتظر مراجعة الإدارة. سيصلك إشعار عند القبول.\n\n" +
-    `${methodsBlock}\n\n` +
-    "لا ترسل المبلغ خارج الخطوات الظاهرة في البوت."
-  );
-}
+  "🎟️ *أكواد الخصم*\n\n" +
+  "لا تُستخدم أكواد الخصم أثناء تصفّح المنتجات داخل تيليجرام.\n\n" +
+  "إن توفّرت أكواد لاحقاً فسيكون ذلك عبر منصة 3M Academy.";
 
 async function showHelpText(ctx: Context, text: string): Promise<void> {
   await ctx.editMessageText(text, {
@@ -92,10 +64,10 @@ export async function handleHelpBuy(ctx: Context): Promise<void> {
 
 export async function handleHelpPay(
   ctx: Context,
-  config: EnvConfig
+  _config: EnvConfig
 ): Promise<void> {
   await ctx.answerCallbackQuery();
-  await showHelpText(ctx, buildPayHelpText(config));
+  await showHelpText(ctx, HELP_PAY_TEXT);
 }
 
 export async function handleHelpPurchases(ctx: Context): Promise<void> {

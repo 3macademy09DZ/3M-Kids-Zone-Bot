@@ -32,6 +32,7 @@ import {
   handlePromoRetry,
   handlePromoConfirm,
   handleCheckoutPromoInput,
+  handleAcademyDetailsInfo,
 } from "./handlers/order";
 import type { AdminOrderSection } from "./database/types";
 import {
@@ -162,6 +163,7 @@ export function createBot(config: EnvConfig): Bot {
     const contentId = Number(ctx.match![1]);
     await handleVideoSelect(ctx, contentId);
   });
+  bot.callbackQuery(CB.ACADEMY_DETAILS, handleAcademyDetailsInfo);
 
   bot.callbackQuery(new RegExp(`^${CB.CONFIRM_ORDER}(\\d+)$`), async (ctx) => {
     const contentId = Number(ctx.match![1]);

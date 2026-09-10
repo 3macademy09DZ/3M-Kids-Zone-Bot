@@ -63,7 +63,10 @@ export function buildSectionContentMessage(
     for (const item of items) {
       lines.push(`• ${item.titleAr} — ${formatPriceDzd(item.price)}`);
     }
-    lines.push("", "_اضغط على عنصر لفتحه:_");
+    lines.push(
+      "",
+      "_المحتوى لا يُفتح من تيليجرام. الوصول إليه سيكون عبر منصة 3M Academy._"
+    );
   }
 
   return lines.join("\n");
