@@ -66,8 +66,20 @@ async function showHelpText(ctx: Context, text: string): Promise<void> {
 }
 
 export async function handleHelpMenu(ctx: Context): Promise<void> {
-  await ctx.answerCallbackQuery();
-  await ctx.editMessageText(HELP_MENU_TEXT, {
+  if (ctx.callbackQuery) {
+    await ctx.answerCallbackQuery();
+    try {
+      await ctx.editMessageText(HELP_MENU_TEXT, {
+        parse_mode: "Markdown",
+        reply_markup: helpMenuKeyboard(),
+      });
+      return;
+    } catch {
+      // Fall through to a new message when the previous one cannot be edited.
+    }
+  }
+
+  await ctx.reply(HELP_MENU_TEXT, {
     parse_mode: "Markdown",
     reply_markup: helpMenuKeyboard(),
   });
