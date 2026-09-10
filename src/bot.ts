@@ -34,6 +34,7 @@ import {
   handleAdminCustomerProducts,
   handleAdminCustomerOrders,
 } from "./handlers/adminCustomers";
+import { handleAdminStats } from "./handlers/adminStats";
 import {
   handleCustomerPaymentProof,
   handleResubmitPayment,
@@ -207,6 +208,7 @@ export function createBot(config: EnvConfig): Bot {
       await handleAdminCustomerOrders(ctx, telegramUserId, page);
     }
   );
+  bot.callbackQuery(CB.ADMIN_STATS, adminOnly, handleAdminStats);
   bot.callbackQuery(CB.ADMIN_INVITES, adminOnly, (ctx) =>
     handleAdminInvites(ctx, inviteLinkService)
   );
