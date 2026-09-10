@@ -80,6 +80,13 @@ export const CB = {
   ADMIN_SET_CANCEL: "aset_x",
   ADMIN_SET_ADMIN_USER: "aset_aue",
   ADMIN_SET_ADMIN_USER_DEL: "aset_aud",
+  ADMIN_SUPPORT: "admin_sup",
+  ADMIN_SUPPORT_LIST: "asup_l:",
+  ADMIN_SUPPORT_VIEW: "asup_v:",
+  ADMIN_SUPPORT_REPLY: "asup_r:",
+  ADMIN_SUPPORT_REPLY_CANCEL: "asup_rc:",
+  ADMIN_SUPPORT_CLOSE: "asup_x:",
+  ADMIN_SUPPORT_CLOSE_OK: "asup_xk:",
   ADMIN_BACKUP: "admin_bak",
   ADMIN_BACK: "admin_back",
   ADMIN_CONTENT: "admin_content",
@@ -138,6 +145,96 @@ export function supportCancelKeyboard(): InlineKeyboard {
 
 export function supportDoneKeyboard(): InlineKeyboard {
   return new InlineKeyboard().text("🏠 القائمة الرئيسية", CB.BACK_MAIN);
+}
+
+export function adminSupportNotifyKeyboard(ticketId: number): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("💬 الرد على العميل", `${CB.ADMIN_SUPPORT_REPLY}${ticketId}`)
+    .row()
+    .text("✅ إغلاق التذكرة", `${CB.ADMIN_SUPPORT_CLOSE}${ticketId}`)
+    .row()
+    .text("📂 تفاصيل التذكرة", `${CB.ADMIN_SUPPORT_VIEW}${ticketId}`);
+}
+
+export function adminSupportHubKeyboard(counts: {
+  open: number;
+  closed: number;
+  all: number;
+}): InlineKeyboard {
+  return new InlineKeyboard()
+    .text(`🟢 التذاكر المفتوحة (${counts.open})`, `${CB.ADMIN_SUPPORT_LIST}open:0`)
+    .row()
+    .text(`✅ التذاكر المغلقة (${counts.closed})`, `${CB.ADMIN_SUPPORT_LIST}closed:0`)
+    .row()
+    .text(`📋 كل التذاكر (${counts.all})`, `${CB.ADMIN_SUPPORT_LIST}all:0`)
+    .row()
+    .text("🔙 رجوع", CB.ADMIN_BACK);
+}
+
+export function adminSupportListKeyboard(input: {
+  filter: "open" | "closed" | "all";
+  tickets: { id: number; ticketNumber: string }[];
+  page: number;
+  totalPages: number;
+}): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+
+  for (const ticket of input.tickets) {
+    keyboard
+      .text(`🎫 ${ticket.ticketNumber}`, `${CB.ADMIN_SUPPORT_VIEW}${ticket.id}`)
+      .row();
+  }
+
+  if (input.totalPages > 1) {
+    if (input.page > 0) {
+      keyboard.text(
+        "◀️ السابق",
+        `${CB.ADMIN_SUPPORT_LIST}${input.filter}:${input.page - 1}`
+      );
+    }
+    if (input.page + 1 < input.totalPages) {
+      keyboard.text(
+        "▶️ التالي",
+        `${CB.ADMIN_SUPPORT_LIST}${input.filter}:${input.page + 1}`
+      );
+    }
+    keyboard.row();
+  }
+
+  keyboard.text("🔙 رجوع", CB.ADMIN_SUPPORT);
+  return keyboard;
+}
+
+export function adminSupportDetailsKeyboard(input: {
+  ticketId: number;
+  isOpen: boolean;
+}): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+
+  if (input.isOpen) {
+    keyboard
+      .text("💬 الرد على العميل", `${CB.ADMIN_SUPPORT_REPLY}${input.ticketId}`)
+      .row()
+      .text("✅ إغلاق التذكرة", `${CB.ADMIN_SUPPORT_CLOSE}${input.ticketId}`)
+      .row();
+  }
+
+  keyboard.text("🔙 رجوع", CB.ADMIN_SUPPORT);
+  return keyboard;
+}
+
+export function adminSupportReplyCancelKeyboard(ticketId: number): InlineKeyboard {
+  return new InlineKeyboard().text(
+    "❌ إلغاء",
+    `${CB.ADMIN_SUPPORT_REPLY_CANCEL}${ticketId}`
+  );
+}
+
+export function adminSupportCloseConfirmKeyboard(ticketId: number): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("✅ نعم، إغلاق", `${CB.ADMIN_SUPPORT_CLOSE_OK}${ticketId}`)
+    .row()
+    .text("❌ إلغاء", `${CB.ADMIN_SUPPORT_VIEW}${ticketId}`);
 }
 
 export function openMyProductsKeyboard(): InlineKeyboard {
@@ -349,6 +446,8 @@ export function adminMenuKeyboard(): InlineKeyboard {
     .text("📚 المحتوى", CB.ADMIN_CONTENT)
     .row()
     .text("👥 العملاء", CB.ADMIN_CUSTOMERS)
+    .row()
+    .text("🆘 تذاكر الدعم", CB.ADMIN_SUPPORT)
     .row()
     .text("📊 إحصائيات المبيعات", CB.ADMIN_STATS)
     .row()

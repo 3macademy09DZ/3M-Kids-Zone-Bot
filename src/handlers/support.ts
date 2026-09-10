@@ -10,10 +10,12 @@ import { handleHelpMenu } from "./help";
 import {
   supportCancelKeyboard,
   supportDoneKeyboard,
+  adminSupportNotifyKeyboard,
 } from "../keyboards/menus";
 import { clearAdminContentSession } from "../state/adminContentSession";
 import { clearAdminPromoSession } from "../state/adminPromoSession";
 import { clearAdminSettingsSession } from "../state/adminSettingsSession";
+import { clearAdminSupportReplySession } from "../state/adminSupportSession";
 import { clearCheckoutSession } from "../state/checkoutSession";
 import { clearPaymentProofSession } from "../state/paymentSession";
 import {
@@ -69,15 +71,19 @@ async function notifyAdminOfTicket(
 
   const text = buildAdminTicketMessage(ticket);
   const photoFileId = ticket.photoFileId;
+  const replyMarkup = adminSupportNotifyKeyboard(ticket.id);
 
   if (!photoFileId) {
-    await ctx.api.sendMessage(config.adminTelegramId, text);
+    await ctx.api.sendMessage(config.adminTelegramId, text, {
+      reply_markup: replyMarkup,
+    });
     return;
   }
 
   if (text.length <= TELEGRAM_CAPTION_LIMIT) {
     await ctx.api.sendPhoto(config.adminTelegramId, photoFileId, {
       caption: text,
+      reply_markup: replyMarkup,
     });
     return;
   }
@@ -85,7 +91,9 @@ async function notifyAdminOfTicket(
   await ctx.api.sendPhoto(config.adminTelegramId, photoFileId, {
     caption: `🆘 تذكرة دعم جديدة\n🎫 رقم التذكرة: ${ticket.ticketNumber}`,
   });
-  await ctx.api.sendMessage(config.adminTelegramId, text);
+  await ctx.api.sendMessage(config.adminTelegramId, text, {
+    reply_markup: replyMarkup,
+  });
 }
 
 async function presentSupportPrompt(ctx: Context): Promise<void> {
@@ -118,6 +126,7 @@ export async function handleSupportStart(ctx: Context): Promise<void> {
   clearAdminContentSession(userId);
   clearAdminPromoSession(userId);
   clearAdminSettingsSession(userId);
+  clearAdminSupportReplySession(userId);
   setSupportSession(userId, { awaitingMessage: true });
   await presentSupportPrompt(ctx);
 }
