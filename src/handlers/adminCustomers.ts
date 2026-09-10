@@ -1,6 +1,6 @@
 import type { Context } from "grammy";
 import { getEntitledContentItemsForUser } from "../database/content";
-import { CONTENT_TYPE_EMOJI } from "../database/contentTypes";
+import { CONTENT_TYPE_EMOJI, type ProductContentItem } from "../database/contentTypes";
 import { getEntitlementsByUserId } from "../database/entitlements";
 import {
   getAllOrders,
@@ -129,6 +129,17 @@ function latestActivityLabel(orders: Order[]): string {
   const latest = [...orders].sort((a, b) => b.id - a.id)[0];
   return formatApprovalDate(
     latest.paymentReviewedAt ?? latest.paymentSubmittedAt ?? latest.createdAt
+  );
+}
+
+function formatPurchasedProductLine(
+  item: ProductContentItem,
+  ownedPrices: Map<number, number>
+): string {
+  const price = formatPriceDzd(resolveOwnedItemPrice(item, ownedPrices));
+  return (
+    `${CONTENT_TYPE_EMOJI[item.contentType]} ${item.titleAr}\n` +
+    `💰 ${price}`
   );
 }
 
@@ -267,12 +278,9 @@ export async function handleAdminCustomerProducts(
     return;
   }
 
-  const lines = items.map((item) => {
-    const price = formatPriceDzd(resolveOwnedItemPrice(item, ownedPrices));
-    return `${CONTENT_TYPE_EMOJI[item.contentType]} ${item.titleAr} — ${price}`;
-  });
+  const lines = items.map((item) => formatPurchasedProductLine(item, ownedPrices));
 
-  await ctx.editMessageText(`${title}\n\n${lines.join("\n")}`, {
+  await ctx.editMessageText(`${title}\n\n${lines.join("\n\n")}`, {
     reply_markup: adminCustomerProductsKeyboard(telegramUserId),
   });
 }
