@@ -1,5 +1,4 @@
 import type { Context } from "grammy";
-import { InlineKeyboard } from "grammy";
 import { isChannelConfigured } from "../config/env";
 import type { EnvConfig } from "../config/env";
 import {
@@ -20,14 +19,17 @@ import { getProductById } from "../data/products";
 import type { InviteLinkService } from "../services/inviteLink";
 import {
   adminBackKeyboard,
+  adminEmptyOrderSectionKeyboard,
   adminMenuKeyboard,
   adminOrderKeyboard,
+  adminOrdersHubKeyboard,
+  adminOrderSectionListKeyboard,
   openMyProductsKeyboard,
 } from "../keyboards/menus";
-import type { Order, OrderStatus } from "../database/types";
+import type { AdminOrderSection, Order, OrderStatus } from "../database/types";
 import {
-  isPaymentReviewStatus,
-  isPendingOrderStatus,
+  getAdminOrderSection,
+  orderBelongsToAdminSection,
 } from "../database/types";
 import {
   buildRejectedPaymentMessage,
@@ -48,6 +50,16 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   completed: "✔️ مكتمل",
   cancelled: "❌ ملغى",
 };
+
+const ADMIN_ORDER_SECTION_TITLES: Record<AdminOrderSection, string> = {
+  review: "🔎 في انتظار مراجعة الدفع",
+  wait: "⏳ في انتظار الدفع",
+  approved: "✅ الطلبات المقبولة",
+  rejected: "❌ الطلبات المرفوضة",
+  all: "📋 كل الطلبات",
+};
+
+const ADMIN_ORDERS_PAGE_SIZE = 8;
 
 function truncate(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max)}…` : text;
@@ -101,6 +113,51 @@ function getOrderItemLabel(order: Order): {
   };
 }
 
+function countOrdersBySection(orders: Order[]): Record<AdminOrderSection, number> {
+  const counts: Record<AdminOrderSection, number> = {
+    review: 0,
+    wait: 0,
+    approved: 0,
+    rejected: 0,
+    all: orders.length,
+  };
+
+  for (const order of orders) {
+    const section = getAdminOrderSection(order.status);
+    if (section) {
+      counts[section] += 1;
+    }
+  }
+
+  return counts;
+}
+
+function ordersForSection(orders: Order[], section: AdminOrderSection): Order[] {
+  return orders.filter((order) => orderBelongsToAdminSection(order.status, section));
+}
+
+function backSectionForOrder(order: Order): AdminOrderSection {
+  return getAdminOrderSection(order.status) ?? "all";
+}
+
+function buildOrderSummary(order: Order): string {
+  const product = getProductById(order.productId);
+  const item = getOrderItemLabel(order);
+  const customer = order.telegramUsername
+    ? `@${order.telegramUsername}`
+    : String(order.telegramUserId);
+  const productName =
+    item.title !== "غير محدد" ? item.title : (product?.nameAr ?? order.productId);
+
+  return (
+    `🧾 ${getOrderDisplayNumber(order)}\n` +
+    `👤 ${customer}\n` +
+    `📦 ${productName}\n` +
+    `💰 ${item.price}\n` +
+    `📌 ${getStatusLabel(order.status)}`
+  );
+}
+
 export function buildOrderMessage(order: Order): string {
   const product = getProductById(order.productId);
   const productName = product?.nameAr ?? order.productId;
@@ -127,35 +184,40 @@ export function buildOrderMessage(order: Order): string {
   );
 }
 
-async function sendOrderMessage(ctx: Context, order: Order): Promise<void> {
+async function sendPaymentProof(ctx: Context, order: Order): Promise<void> {
   const chatId = ctx.chat?.id;
-  if (!chatId) {
-    logger.error("Cannot send order message: chat id is missing");
+  if (!chatId || !order.paymentProofFileId) {
     return;
   }
 
-  const keyboard = adminOrderKeyboard(order);
+  try {
+    if (order.paymentProofMediaKind === "document") {
+      await ctx.api.sendDocument(chatId, order.paymentProofFileId, {
+        caption: `🧾 إثبات الدفع — ${getOrderDisplayNumber(order)}`,
+      });
+    } else {
+      await ctx.api.sendPhoto(chatId, order.paymentProofFileId, {
+        caption: `🧾 إثبات الدفع — ${getOrderDisplayNumber(order)}`,
+      });
+    }
+  } catch (error) {
+    logger.error(`Failed to send payment proof for order #${order.id}`, error);
+  }
+}
 
-  await ctx.api.sendMessage(chatId, buildOrderMessage(order), {
+async function showAdminOrderDetails(
+  ctx: Context,
+  order: Order,
+  backSection: AdminOrderSection
+): Promise<void> {
+  const keyboard = adminOrderKeyboard(order, backSection);
+
+  await ctx.editMessageText(buildOrderMessage(order), {
     parse_mode: "HTML",
-    reply_markup: keyboard.inline_keyboard.length > 0 ? keyboard : undefined,
+    reply_markup: keyboard,
   });
 
-  if (order.paymentProofFileId) {
-    try {
-      if (order.paymentProofMediaKind === "document") {
-        await ctx.api.sendDocument(chatId, order.paymentProofFileId, {
-          caption: `🧾 إثبات الدفع — ${getOrderDisplayNumber(order)}`,
-        });
-      } else {
-        await ctx.api.sendPhoto(chatId, order.paymentProofFileId, {
-          caption: `🧾 إثبات الدفع — ${getOrderDisplayNumber(order)}`,
-        });
-      }
-    } catch (error) {
-      logger.error(`Failed to send payment proof for order #${order.id}`, error);
-    }
-  }
+  await sendPaymentProof(ctx, order);
 }
 
 export async function handleAdminCommand(ctx: Context): Promise<void> {
@@ -175,57 +237,75 @@ export async function handleAdminBack(ctx: Context): Promise<void> {
 
 export async function handleAdminOrders(ctx: Context): Promise<void> {
   await ctx.answerCallbackQuery();
-  const orders = getAllOrders();
+  const counts = countOrdersBySection(getAllOrders());
+
+  await ctx.editMessageText("📦 *الطلبات*\n\nاختر القسم الذي تريد عرضه:", {
+    parse_mode: "Markdown",
+    reply_markup: adminOrdersHubKeyboard(counts),
+  });
+}
+
+export async function handleAdminOrderSection(
+  ctx: Context,
+  section: AdminOrderSection,
+  page = 0
+): Promise<void> {
+  await ctx.answerCallbackQuery();
+
+  const orders = ordersForSection(getAllOrders(), section);
+  const title = ADMIN_ORDER_SECTION_TITLES[section];
 
   if (orders.length === 0) {
-    await ctx.editMessageText("📦 *الطلبات*\n\nلا توجد طلبات حالياً.", {
-      parse_mode: "Markdown",
-      reply_markup: adminBackKeyboard(),
+    await ctx.editMessageText(`${title}\n\nلا توجد طلبات في هذا القسم حاليًا.`, {
+      reply_markup: adminEmptyOrderSectionKeyboard(),
     });
     return;
   }
 
-  const pendingOrders = orders.filter(
-    (order) =>
-      isPaymentReviewStatus(order.status) ||
-      isPendingOrderStatus(order.status) ||
-      order.status === "awaiting_payment"
+  const totalPages = Math.max(1, Math.ceil(orders.length / ADMIN_ORDERS_PAGE_SIZE));
+  const safePage = Math.min(Math.max(page, 0), totalPages - 1);
+  const slice = orders.slice(
+    safePage * ADMIN_ORDERS_PAGE_SIZE,
+    (safePage + 1) * ADMIN_ORDERS_PAGE_SIZE
   );
+
+  const pageNote =
+    totalPages > 1 ? `\n\nصفحة ${safePage + 1} من ${totalPages}` : "";
 
   await ctx.editMessageText(
-    `📦 *الطلبات* (${orders.length})\n\n` +
-      (pendingOrders.length > 0
-        ? `_يوجد ${pendingOrders.length} طلب/طلبات بانتظار المراجعة._\n\n`
-        : "") +
-      "_يتم عرض الطلبات في الرسائل التالية:_",
+    `${title} (${orders.length})\n\n` +
+      slice.map(buildOrderSummary).join("\n\n") +
+      pageNote,
     {
-      parse_mode: "Markdown",
-      reply_markup: adminBackKeyboard(),
+      reply_markup: adminOrderSectionListKeyboard({
+        section,
+        orders: slice.map((order) => ({
+          id: order.id,
+          displayNumber: getOrderDisplayNumber(order),
+        })),
+        page: safePage,
+        totalPages,
+      }),
     }
   );
+}
 
-  const pendingFirst = [
-    ...orders.filter((order) => isPaymentReviewStatus(order.status)),
-    ...orders.filter(
-      (order) =>
-        !isPaymentReviewStatus(order.status) &&
-        (isPendingOrderStatus(order.status) || order.status === "awaiting_payment")
-    ),
-    ...orders.filter(
-      (order) =>
-        !isPaymentReviewStatus(order.status) &&
-        !isPendingOrderStatus(order.status) &&
-        order.status !== "awaiting_payment"
-    ),
-  ];
-
-  for (const order of pendingFirst.slice(0, 20)) {
-    try {
-      await sendOrderMessage(ctx, order);
-    } catch (error) {
-      logger.error(`Failed to send order message for order #${order.id}`, error);
-    }
+export async function handleAdminOrderView(
+  ctx: Context,
+  orderId: number,
+  backSection: AdminOrderSection
+): Promise<void> {
+  const order = getOrderById(orderId);
+  if (!order) {
+    await ctx.answerCallbackQuery({
+      text: "❌ الطلب غير موجود.",
+      show_alert: true,
+    });
+    return;
   }
+
+  await ctx.answerCallbackQuery();
+  await showAdminOrderDetails(ctx, order, backSection);
 }
 
 export async function handleAdminApproveOrder(
@@ -271,11 +351,11 @@ export async function handleAdminApproveOrder(
   }
 
   const order = getOrderById(orderId) ?? result.order;
-  const keyboard = adminOrderKeyboard(order);
+  const keyboard = adminOrderKeyboard(order, backSectionForOrder(order));
 
   await ctx.editMessageText(buildOrderMessage(order), {
     parse_mode: "HTML",
-    reply_markup: keyboard.inline_keyboard.length > 0 ? keyboard : new InlineKeyboard(),
+    reply_markup: keyboard,
   });
 }
 
@@ -328,11 +408,10 @@ export async function handleAdminAcceptPayment(
   }
 
   const order = getOrderById(orderId) ?? result.order;
-  const keyboard = adminOrderKeyboard(order);
+  const keyboard = adminOrderKeyboard(order, backSectionForOrder(order));
   await ctx.editMessageText(buildOrderMessage(order), {
     parse_mode: "HTML",
-    reply_markup:
-      keyboard.inline_keyboard.length > 0 ? keyboard : new InlineKeyboard(),
+    reply_markup: keyboard,
   });
 }
 
@@ -376,11 +455,10 @@ export async function handleAdminRejectPayment(
   }
 
   const order = getOrderById(orderId) ?? result.order;
-  const keyboard = adminOrderKeyboard(order);
+  const keyboard = adminOrderKeyboard(order, backSectionForOrder(order));
   await ctx.editMessageText(buildOrderMessage(order), {
     parse_mode: "HTML",
-    reply_markup:
-      keyboard.inline_keyboard.length > 0 ? keyboard : new InlineKeyboard(),
+    reply_markup: keyboard,
   });
 }
 
