@@ -1,6 +1,5 @@
 import { getDatabase } from "./db";
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
-import { grantVideoEntitlement } from "./entitlements";
 import { consumePromoUseForOrder } from "./promos";
 import type { CreateOrderInput, Order, OrderStatus, PaymentMethod } from "./types";
 import { isPendingOrderStatus } from "./types";
@@ -258,11 +257,7 @@ function grantApprovedOrder(order: Order): Order | null {
     throw error;
   }
 
-  const updated = getOrderById(order.id);
-  if (updated?.contentId != null) {
-    grantVideoEntitlement(updated.telegramUserId, updated.contentId, updated.id);
-  }
-  return updated;
+  return getOrderById(order.id);
 }
 
 export function approvePayment(id: number): ApproveOrderResult {
@@ -272,9 +267,6 @@ export function approvePayment(id: number): ApproveOrderResult {
   }
 
   if (PURCHASED_STATUSES.includes(order.status)) {
-    if (order.contentId != null) {
-      grantVideoEntitlement(order.telegramUserId, order.contentId, order.id);
-    }
     return { ok: true, order, alreadyApproved: true };
   }
 
@@ -334,9 +326,6 @@ export function approveOrder(id: number): ApproveOrderResult {
 
   if (!isPendingOrderStatus(order.status) && order.status !== "awaiting_payment") {
     if (PURCHASED_STATUSES.includes(order.status)) {
-      if (order.contentId != null) {
-        grantVideoEntitlement(order.telegramUserId, order.contentId, order.id);
-      }
       return { ok: true, order, alreadyApproved: true };
     }
     return { ok: false, reason: "not_pending" };

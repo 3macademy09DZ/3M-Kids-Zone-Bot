@@ -2,12 +2,9 @@ import type { Context } from "grammy";
 import { InlineKeyboard } from "grammy";
 import type { EnvConfig } from "../config/env";
 import {
-  approveOrder,
-  approvePayment,
   getAllOrders,
   getOrderById,
   getOrdersWithInviteLinks,
-  rejectPayment,
 } from "../database/orders";
 import { getContentItemById } from "../database/content";
 import {
@@ -23,18 +20,15 @@ import {
   adminOrderKeyboard,
   adminOrdersHubKeyboard,
   adminOrderSectionListKeyboard,
-  openMyProductsKeyboard,
 } from "../keyboards/menus";
 import type { AdminOrderSection, Order, OrderStatus } from "../database/types";
 import {
   getAdminOrderSection,
   orderBelongsToAdminSection,
 } from "../database/types";
-import {
-  buildRejectedPaymentMessage,
-  PAYMENT_METHOD_LABELS,
-} from "./payment";
-import { buildPurchaseReceipt, getOrderDisplayNumber } from "../utils/orderNumber";
+import { PAYMENT_METHOD_LABELS } from "./payment";
+import { getOrderDisplayNumber } from "../utils/orderNumber";
+import { TELEGRAM_PAYMENT_REVIEW_DISABLED_ALERT } from "../config/academy";
 import { formatPriceDzd } from "../utils/price";
 import { logger } from "../utils/logger";
 import { clearAdminPromoSession } from "../state/adminPromoSession";
@@ -388,143 +382,33 @@ export async function handleAdminOrderView(
 
 export async function handleAdminApproveOrder(
   ctx: Context,
-  orderId: number
+  _orderId: number
 ): Promise<void> {
-  const result = approveOrder(orderId);
-
-  if (!result.ok) {
-    await ctx.answerCallbackQuery({
-      text:
-        result.reason === "not_found"
-          ? "❌ الطلب غير موجود."
-          : "❌ لا يمكن قبول هذا الطلب.",
-      show_alert: true,
-    });
-    return;
-  }
-
-  if (result.alreadyApproved) {
-    await ctx.answerCallbackQuery({
-      text: "ℹ️ تم قبول هذا الطلب مسبقاً.",
-      show_alert: true,
-    });
-  } else {
-    await ctx.answerCallbackQuery({ text: "✅ تم قبول الطلب." });
-
-    try {
-      await ctx.api.sendMessage(
-        result.order.telegramUserId,
-        "✅ تم تأكيد الدفع والموافقة على طلبك\n" +
-          "أصبح المحتوى متاحًا الآن",
-        {
-          reply_markup: openMyProductsKeyboard(),
-        }
-      );
-    } catch (error) {
-      logger.error(
-        `Failed to notify customer ${result.order.telegramUserId} about approval`,
-        error
-      );
-    }
-  }
-
-  const order = getOrderById(orderId) ?? result.order;
-  await updateAdminOrderDetailsMessage(ctx, order, backSectionForOrder(order));
+  await ctx.answerCallbackQuery({
+    text: TELEGRAM_PAYMENT_REVIEW_DISABLED_ALERT,
+    show_alert: true,
+  });
 }
 
 export async function handleAdminAcceptPayment(
   ctx: Context,
-  orderId: number
+  _orderId: number
 ): Promise<void> {
-  const result = approvePayment(orderId);
-
-  if (!result.ok) {
-    await ctx.answerCallbackQuery({
-      text:
-        result.reason === "missing_proof"
-          ? "❌ لا يوجد إثبات دفع. استخدم القبول اليدوي إن لزم."
-          : result.reason === "not_found"
-            ? "❌ الطلب غير موجود."
-            : "❌ لا يمكن قبول هذا الدفع.",
-      show_alert: true,
-    });
-    return;
-  }
-
-  if (result.alreadyApproved) {
-    await ctx.answerCallbackQuery({
-      text: "ℹ️ تم قبول هذا الطلب مسبقاً.",
-      show_alert: true,
-    });
-  } else {
-    await ctx.answerCallbackQuery({ text: "✅ تم قبول الدفع." });
-
-    try {
-      const item = getOrderItemLabel(result.order);
-      await ctx.api.sendMessage(
-        result.order.telegramUserId,
-        buildPurchaseReceipt({
-          order: result.order,
-          productName: item.title,
-          priceLabel: item.price,
-        }),
-        {
-          reply_markup: openMyProductsKeyboard(),
-        }
-      );
-    } catch (error) {
-      logger.error(
-        `Failed to notify customer ${result.order.telegramUserId} about payment approval`,
-        error
-      );
-    }
-  }
-
-  const order = getOrderById(orderId) ?? result.order;
-  await updateAdminOrderDetailsMessage(ctx, order, backSectionForOrder(order));
+  await ctx.answerCallbackQuery({
+    text: TELEGRAM_PAYMENT_REVIEW_DISABLED_ALERT,
+    show_alert: true,
+  });
 }
 
 export async function handleAdminRejectPayment(
   ctx: Context,
-  orderId: number,
-  config: EnvConfig
+  _orderId: number,
+  _config: EnvConfig
 ): Promise<void> {
-  const result = rejectPayment(orderId);
-
-  if (!result.ok) {
-    await ctx.answerCallbackQuery({
-      text:
-        result.reason === "not_found"
-          ? "❌ الطلب غير موجود."
-          : "❌ لا يمكن رفض هذا الدفع.",
-      show_alert: true,
-    });
-    return;
-  }
-
-  if (result.alreadyApproved) {
-    await ctx.answerCallbackQuery({
-      text: "ℹ️ هذا الطلب مقبول مسبقاً ولا يمكن رفضه.",
-      show_alert: true,
-    });
-  } else {
-    await ctx.answerCallbackQuery({ text: "❌ تم رفض الدفع." });
-
-    try {
-      const rejected = buildRejectedPaymentMessage(config, result.order.id);
-      await ctx.api.sendMessage(result.order.telegramUserId, rejected.text, {
-        reply_markup: rejected.keyboard,
-      });
-    } catch (error) {
-      logger.error(
-        `Failed to notify customer ${result.order.telegramUserId} about payment rejection`,
-        error
-      );
-    }
-  }
-
-  const order = getOrderById(orderId) ?? result.order;
-  await updateAdminOrderDetailsMessage(ctx, order, backSectionForOrder(order));
+  await ctx.answerCallbackQuery({
+    text: TELEGRAM_PAYMENT_REVIEW_DISABLED_ALERT,
+    show_alert: true,
+  });
 }
 
 export async function handleAdminInvites(

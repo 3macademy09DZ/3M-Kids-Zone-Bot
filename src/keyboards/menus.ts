@@ -1,9 +1,5 @@
 import { InlineKeyboard } from "grammy";
 import type { AdminOrderSection, Order } from "../database/types";
-import {
-  isPaymentReviewStatus,
-  isPendingOrderStatus,
-} from "../database/types";
 import { CONTENT_TYPE_EMOJI, type ContentType } from "../database/contentTypes";
 import { getProductById } from "../data/products";
 import { formatPriceDzd } from "../utils/price";
@@ -24,6 +20,7 @@ export const CB = {
   BACK_MAIN: "back_main",
   ORDER_PRODUCT: "order_product:",
   ORDER_CONTENT: "order_content:",
+  ACADEMY_DETAILS: "acad_info",
   CONFIRM_ORDER: "confirm_order:",
   PAY_METHOD_CCP: "pay_method_ccp:",
   PAY_METHOD_REDOTPAY: "pay_method_redotpay:",
@@ -124,13 +121,13 @@ export function mainMenuKeyboard(options?: { showContact?: boolean }): InlineKey
 
 export function helpMenuKeyboard(): InlineKeyboard {
   return new InlineKeyboard()
-    .text("🛒 كيف أشتري؟", CB.HELP_BUY)
+    .text("🛒 كيف أحصل على المحتوى؟", CB.HELP_BUY)
     .row()
     .text("💳 كيف أدفع؟", CB.HELP_PAY)
     .row()
-    .text("📦 أين أجد مشترياتي؟", CB.HELP_PURCHASES)
+    .text("📦 أين أجد منتجاتي؟", CB.HELP_PURCHASES)
     .row()
-    .text("🎟️ كيف أستخدم كود الخصم؟", CB.HELP_PROMO)
+    .text("🎟️ أكواد الخصم", CB.HELP_PROMO)
     .row()
     .text("❓ لدي مشكلة", CB.HELP_PROBLEM)
     .row()
@@ -295,6 +292,15 @@ export function packageVideoListKeyboard(
   keyboard.text("↩️ رجوع", CB.ORDER).row();
   keyboard.text("↩️ القائمة الرئيسية", CB.BACK_MAIN);
   return keyboard;
+}
+
+export function catalogItemDetailsKeyboard(productId: string): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("🌐 عرض التفاصيل في 3M Academy", CB.ACADEMY_DETAILS)
+    .row()
+    .text("↩️ رجوع", `${CB.ORDER_PRODUCT}${productId}`)
+    .row()
+    .text("↩️ القائمة الرئيسية", CB.BACK_MAIN);
 }
 
 export function confirmOrderKeyboard(
@@ -659,12 +665,10 @@ export function adminEmptyOrderSectionKeyboard(): InlineKeyboard {
 }
 
 export function adminPaymentProofNotifyKeyboard(orderId: number): InlineKeyboard {
-  return new InlineKeyboard()
-    .text("✅ قبول الدفع", `${CB.ADMIN_ACCEPT_PAYMENT}${orderId}`)
-    .row()
-    .text("❌ رفض الدفع", `${CB.ADMIN_REJECT_PAYMENT}${orderId}`)
-    .row()
-    .text("📂 فتح تفاصيل الطلب", `${CB.ADMIN_ORDER_VIEW}${orderId}:review`);
+  return new InlineKeyboard().text(
+    "📂 فتح تفاصيل الطلب",
+    `${CB.ADMIN_ORDER_VIEW}${orderId}:review`
+  );
 }
 
 export function adminOrderSectionListKeyboard(input: {
@@ -782,28 +786,10 @@ export function adminOrderKeyboard(
   order: Order,
   backSection: AdminOrderSection = "all"
 ): InlineKeyboard {
-  const keyboard = new InlineKeyboard();
-
-  if (isPaymentReviewStatus(order.status) && order.paymentProofFileId) {
-    keyboard
-      .text("✅ قبول الدفع", `${CB.ADMIN_ACCEPT_PAYMENT}${order.id}`)
-      .row()
-      .text("❌ رفض الدفع", `${CB.ADMIN_REJECT_PAYMENT}${order.id}`)
-      .row();
-  } else if (
-    (isPendingOrderStatus(order.status) || order.status === "awaiting_payment") &&
-    !order.paymentProofFileId
-  ) {
-    keyboard
-      .text(
-        "⚠️ قبول يدوي (بدون إثبات)",
-        `${CB.ADMIN_APPROVE_ORDER}${order.id}`
-      )
-      .row();
-  }
-
-  keyboard.text("🔙 رجوع إلى الطلبات", `${CB.ADMIN_ORDERS_SECTION}${backSection}`);
-  return keyboard;
+  return new InlineKeyboard().text(
+    "🔙 رجوع إلى الطلبات",
+    `${CB.ADMIN_ORDERS_SECTION}${backSection}`
+  );
 }
 
 export function buildApproveOrderCallback(orderId: number): string {

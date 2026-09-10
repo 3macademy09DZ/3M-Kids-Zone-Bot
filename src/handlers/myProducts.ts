@@ -17,7 +17,7 @@ import {
   userCanAccessContentItem,
   userHasEntitledVideosInProduct,
 } from "../services/contentAccess";
-import { deliverOwnedContentItem } from "../services/contentDelivery";
+import { ACADEMY_LINK_PENDING_ALERT } from "../config/academy";
 import {
   buildSectionContentMessage,
   customerSectionItemsKeyboard,
@@ -75,9 +75,9 @@ function buildMyProductsText(
 ): string {
   return (
     "📦 *منتجاتي*\n\n" +
-    "هذه هي العناصر التي اشتريتها:\n\n" +
+    "هذه هي العناصر المرتبطة بحسابك:\n\n" +
     groupVideosByPackage(videos) +
-    "\n\n_اضغط على عنصر لفتحه:_"
+    "\n\n_المحتوى لا يُفتح من تيليجرام. الوصول إليه سيكون عبر منصة 3M Academy._"
   );
 }
 
@@ -99,8 +99,8 @@ export async function handleMyProducts(ctx: Context): Promise<void> {
     if (videos.length === 0) {
       await ctx.reply(
         "📦 *منتجاتي*\n\n" +
-          "لا توجد لديك عناصر مشتراة حالياً.\n\n" +
-          "يمكنك طلب فيديو أو لعبة/نشاط من القائمة الرئيسية عبر /start",
+          "لا توجد لديك عناصر مرتبطة بحسابك حالياً.\n\n" +
+          "يمكنك تصفّح المنتجات من القائمة الرئيسية. الشراء سيتم عبر منصة 3M Academy.",
         {
           parse_mode: "Markdown",
           reply_markup: backToMainKeyboard(),
@@ -133,7 +133,7 @@ export async function handleMyProductsBack(ctx: Context): Promise<void> {
 
   if (videos.length === 0) {
     await ctx.editMessageText(
-      "📦 *منتجاتي*\n\n" + "لا توجد لديك عناصر مشتراة حالياً.",
+      "📦 *منتجاتي*\n\n" + "لا توجد لديك عناصر مرتبطة بحسابك حالياً.",
       {
         parse_mode: "Markdown",
         reply_markup: backToMainKeyboard(),
@@ -188,9 +188,9 @@ export async function handleMyProductOpen(
 
   await ctx.editMessageText(
     `📂 *${product.nameAr}*\n\n` +
-      "العناصر المتاحة لك في هذه الحزمة:\n\n" +
+      "العناصر المرتبطة بحسابك في هذه الحزمة:\n\n" +
       lines.join("\n") +
-      "\n\n_اضغط على عنصر لفتحه:_",
+      "\n\n_المحتوى لا يُفتح من تيليجرام. الوصول إليه سيكون عبر منصة 3M Academy._",
     {
       parse_mode: "Markdown",
       reply_markup: myProductVideosKeyboard(displayItems),
@@ -266,30 +266,14 @@ export async function handleMyContentItemOpen(
 
   if (!allowed || !item) {
     await ctx.answerCallbackQuery({
-      text: "⛔ هذا المحتوى غير متاح في حسابك. يجب شراؤه أولًا.",
+      text: "⛔ هذا المحتوى غير مرتبط بحسابك في البوت.",
       show_alert: true,
     });
     return;
   }
 
-  await ctx.answerCallbackQuery({ text: "⏳ جاري إرسال المحتوى…" });
-
-  try {
-    const chatId = ctx.chat?.id ?? user.id;
-    const result = await deliverOwnedContentItem(
-      ctx.api,
-      chatId,
-      user.id,
-      item
-    );
-
-    if (result === "denied") {
-      await ctx.reply(
-        "⛔ هذا المحتوى غير متاح في حسابك. يمكنك طلبه من «🛒 طلب المحتوى»."
-      );
-    }
-  } catch (error) {
-    logger.error(`Failed to deliver content item #${contentItemId}`, error);
-    await ctx.reply("❌ تعذّر إرسال المحتوى. حاول مرة أخرى لاحقاً.");
-  }
+  await ctx.answerCallbackQuery({
+    text: ACADEMY_LINK_PENDING_ALERT,
+    show_alert: true,
+  });
 }
