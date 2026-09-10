@@ -13,10 +13,14 @@ import {
   handleHelpBuy,
   handleHelpMenu,
   handleHelpPay,
-  handleHelpProblem,
   handleHelpPromo,
   handleHelpPurchases,
 } from "./handlers/help";
+import {
+  handleSupportCancel,
+  handleSupportStart,
+  handleSupportTicketInput,
+} from "./handlers/support";
 import {
   handleOrderMenu,
   handleProductSelect,
@@ -123,7 +127,8 @@ export function createBot(config: EnvConfig): Bot {
   bot.callbackQuery(CB.HELP_PAY, (ctx) => handleHelpPay(ctx, config));
   bot.callbackQuery(CB.HELP_PURCHASES, handleHelpPurchases);
   bot.callbackQuery(CB.HELP_PROMO, handleHelpPromo);
-  bot.callbackQuery(CB.HELP_PROBLEM, (ctx) => handleHelpProblem(ctx, config));
+  bot.callbackQuery(CB.HELP_PROBLEM, handleSupportStart);
+  bot.callbackQuery(CB.HELP_SUPPORT_CANCEL, handleSupportCancel);
   bot.callbackQuery(CB.ORDER, handleOrderMenu);
 
   bot.callbackQuery(new RegExp(`^${CB.ORDER_PRODUCT}(.+)$`), async (ctx) => {
@@ -386,6 +391,11 @@ export function createBot(config: EnvConfig): Bot {
   });
 
   bot.on("message", async (ctx, next) => {
+    const handledSupport = await handleSupportTicketInput(ctx, config);
+    if (handledSupport) {
+      return;
+    }
+
     const handledProof = await handleCustomerPaymentProof(ctx, config);
     if (handledProof) {
       return;

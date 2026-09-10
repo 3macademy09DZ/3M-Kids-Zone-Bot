@@ -150,5 +150,24 @@ export function runMigrations(database: DatabaseSync): void {
       value TEXT NOT NULL,
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS support_tickets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_number TEXT,
+      telegram_user_id INTEGER NOT NULL,
+      first_name TEXT,
+      last_name TEXT,
+      username TEXT,
+      message_text TEXT,
+      photo_file_id TEXT,
+      status TEXT NOT NULL DEFAULT 'open',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_support_tickets_ticket_number
+      ON support_tickets(ticket_number);
+
+    CREATE INDEX IF NOT EXISTS idx_support_tickets_user
+      ON support_tickets(telegram_user_id);
   `);
 }

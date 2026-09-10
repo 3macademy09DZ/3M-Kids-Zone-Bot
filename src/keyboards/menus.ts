@@ -18,6 +18,7 @@ export const CB = {
   HELP_PURCHASES: "help_my",
   HELP_PROMO: "help_promo",
   HELP_PROBLEM: "help_issue",
+  HELP_SUPPORT_CANCEL: "help_scx",
   BACK_MAIN: "back_main",
   ORDER_PRODUCT: "order_product:",
   ORDER_CONTENT: "order_content:",
@@ -129,6 +130,14 @@ export function helpMenuKeyboard(): InlineKeyboard {
 
 export function helpTopicBackKeyboard(): InlineKeyboard {
   return new InlineKeyboard().text("🔙 رجوع", CB.HELP);
+}
+
+export function supportCancelKeyboard(): InlineKeyboard {
+  return new InlineKeyboard().text("🔙 إلغاء والرجوع", CB.HELP_SUPPORT_CANCEL);
+}
+
+export function supportDoneKeyboard(): InlineKeyboard {
+  return new InlineKeyboard().text("🏠 القائمة الرئيسية", CB.BACK_MAIN);
 }
 
 export function openMyProductsKeyboard(): InlineKeyboard {
