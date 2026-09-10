@@ -80,6 +80,16 @@ import {
   handleAdminPromoInput,
 } from "./handlers/adminPromo";
 import {
+  handleAdminSupportCloseAsk,
+  handleAdminSupportCloseConfirm,
+  handleAdminSupportHub,
+  handleAdminSupportList,
+  handleAdminSupportReplyCancel,
+  handleAdminSupportReplyInput,
+  handleAdminSupportReplyStart,
+  handleAdminSupportView,
+} from "./handlers/adminSupport";
+import {
   handleCustomerPaymentProof,
   handleResubmitPayment,
   handleSelectPaymentMethod,
@@ -271,6 +281,49 @@ export function createBot(config: EnvConfig): Bot {
       await handleAdminCustomerOrders(ctx, telegramUserId, page);
     }
   );
+  bot.callbackQuery(CB.ADMIN_SUPPORT, adminOnly, handleAdminSupportHub);
+  bot.callbackQuery(
+    new RegExp(`^${CB.ADMIN_SUPPORT_LIST}(open|closed|all):(\\d+)$`),
+    adminOnly,
+    async (ctx) => {
+      await handleAdminSupportList(ctx, ctx.match![1], Number(ctx.match![2]));
+    }
+  );
+  bot.callbackQuery(
+    new RegExp(`^${CB.ADMIN_SUPPORT_VIEW}(\\d+)$`),
+    adminOnly,
+    async (ctx) => {
+      await handleAdminSupportView(ctx, Number(ctx.match![1]));
+    }
+  );
+  bot.callbackQuery(
+    new RegExp(`^${CB.ADMIN_SUPPORT_REPLY_CANCEL}(\\d+)$`),
+    adminOnly,
+    async (ctx) => {
+      await handleAdminSupportReplyCancel(ctx, Number(ctx.match![1]));
+    }
+  );
+  bot.callbackQuery(
+    new RegExp(`^${CB.ADMIN_SUPPORT_REPLY}(\\d+)$`),
+    adminOnly,
+    async (ctx) => {
+      await handleAdminSupportReplyStart(ctx, Number(ctx.match![1]));
+    }
+  );
+  bot.callbackQuery(
+    new RegExp(`^${CB.ADMIN_SUPPORT_CLOSE_OK}(\\d+)$`),
+    adminOnly,
+    async (ctx) => {
+      await handleAdminSupportCloseConfirm(ctx, Number(ctx.match![1]));
+    }
+  );
+  bot.callbackQuery(
+    new RegExp(`^${CB.ADMIN_SUPPORT_CLOSE}(\\d+)$`),
+    adminOnly,
+    async (ctx) => {
+      await handleAdminSupportCloseAsk(ctx, Number(ctx.match![1]));
+    }
+  );
   bot.callbackQuery(CB.ADMIN_BACKUP, adminOnly, (ctx) =>
     handleAdminBackup(ctx, config)
   );
@@ -391,6 +444,13 @@ export function createBot(config: EnvConfig): Bot {
   });
 
   bot.on("message", async (ctx, next) => {
+    if (isAdmin(ctx, config.adminTelegramId)) {
+      const handledAdminReply = await handleAdminSupportReplyInput(ctx);
+      if (handledAdminReply) {
+        return;
+      }
+    }
+
     const handledSupport = await handleSupportTicketInput(ctx, config);
     if (handledSupport) {
       return;

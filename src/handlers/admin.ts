@@ -39,6 +39,7 @@ import { formatPriceDzd } from "../utils/price";
 import { logger } from "../utils/logger";
 import { clearAdminPromoSession } from "../state/adminPromoSession";
 import { clearAdminSettingsSession } from "../state/adminSettingsSession";
+import { clearAdminSupportReplySession } from "../state/adminSupportSession";
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   pending: "⏳ قيد المراجعة",
@@ -285,6 +286,9 @@ async function showAdminOrderDetails(
 }
 
 export async function handleAdminCommand(ctx: Context): Promise<void> {
+  if (ctx.from) {
+    clearAdminSupportReplySession(ctx.from.id);
+  }
   await ctx.reply("🔐 *لوحة الإدارة — 3M Kids Zone*", {
     parse_mode: "Markdown",
     reply_markup: adminMenuKeyboard(),
@@ -296,6 +300,7 @@ export async function handleAdminBack(ctx: Context): Promise<void> {
   if (ctx.from) {
     clearAdminPromoSession(ctx.from.id);
     clearAdminSettingsSession(ctx.from.id);
+    clearAdminSupportReplySession(ctx.from.id);
   }
   await ctx.editMessageText("🔐 *لوحة الإدارة — 3M Kids Zone*", {
     parse_mode: "Markdown",

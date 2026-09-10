@@ -105,7 +105,8 @@ function initSchema(database: DatabaseSync): void {
       message_text TEXT,
       photo_file_id TEXT,
       status TEXT NOT NULL DEFAULT 'open',
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      closed_at TEXT
     );
 
     CREATE UNIQUE INDEX IF NOT EXISTS idx_support_tickets_ticket_number
@@ -113,6 +114,17 @@ function initSchema(database: DatabaseSync): void {
 
     CREATE INDEX IF NOT EXISTS idx_support_tickets_user
       ON support_tickets(telegram_user_id);
+
+    CREATE TABLE IF NOT EXISTS support_replies (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id INTEGER NOT NULL,
+      message_text TEXT,
+      photo_file_id TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_support_replies_ticket
+      ON support_replies(ticket_id);
   `);
 
   runMigrations(database);
