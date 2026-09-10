@@ -12,6 +12,12 @@ export const CB = {
   ABOUT: "about",
   ORDER: "order",
   CONTACT: "contact",
+  HELP: "help",
+  HELP_BUY: "help_buy",
+  HELP_PAY: "help_pay",
+  HELP_PURCHASES: "help_my",
+  HELP_PROMO: "help_promo",
+  HELP_PROBLEM: "help_issue",
   BACK_MAIN: "back_main",
   ORDER_PRODUCT: "order_product:",
   ORDER_CONTENT: "order_content:",
@@ -102,7 +108,27 @@ export function mainMenuKeyboard(options?: { showContact?: boolean }): InlineKey
     keyboard.text("📞 التواصل معنا", CB.CONTACT).row();
   }
 
+  keyboard.text("❓ المساعدة", CB.HELP).row();
   return keyboard;
+}
+
+export function helpMenuKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("🛒 كيف أشتري؟", CB.HELP_BUY)
+    .row()
+    .text("💳 كيف أدفع؟", CB.HELP_PAY)
+    .row()
+    .text("📦 أين أجد مشترياتي؟", CB.HELP_PURCHASES)
+    .row()
+    .text("🎟️ كيف أستخدم كود الخصم؟", CB.HELP_PROMO)
+    .row()
+    .text("❓ لدي مشكلة", CB.HELP_PROBLEM)
+    .row()
+    .text("🔙 رجوع", CB.BACK_MAIN);
+}
+
+export function helpTopicBackKeyboard(): InlineKeyboard {
+  return new InlineKeyboard().text("🔙 رجوع", CB.HELP);
 }
 
 export function openMyProductsKeyboard(): InlineKeyboard {
