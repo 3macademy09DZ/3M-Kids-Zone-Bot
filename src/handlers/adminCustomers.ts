@@ -10,6 +10,12 @@ import {
 import type { Order } from "../database/types";
 import { getAdminOrderSection } from "../database/types";
 import {
+  formatUserDisplayName,
+  formatUsernameHandle,
+  getTelegramUserById,
+  getTelegramUsersByIds,
+} from "../database/users";
+import {
   adminBackKeyboard,
   adminCustomerCardKeyboard,
   adminCustomerOrdersKeyboard,
@@ -40,17 +46,6 @@ function escapeHtml(text: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-}
-
-function customerDisplayName(
-  username: string | null | undefined,
-  telegramUserId: number
-): string {
-  const clean = username?.trim();
-  if (clean) {
-    return clean.startsWith("@") ? clean : `@${clean}`;
-  }
-  return String(telegramUserId);
 }
 
 function formatPurchaseTotal(total: number): string {
@@ -166,9 +161,16 @@ export async function handleAdminCustomers(
     page,
     CUSTOMERS_PAGE_SIZE
   );
+  const profiles = getTelegramUsersByIds(
+    slice.map((customer) => customer.telegramUserId)
+  );
 
   const lines = slice.map((customer) => {
-    const name = customerDisplayName(customer.username, customer.telegramUserId);
+    const name = formatUserDisplayName(
+      profiles.get(customer.telegramUserId),
+      customer.telegramUserId,
+      customer.username
+    );
     return (
       `👤 ${escapeHtml(name)}\n` +
       `🆔 <code>${customer.telegramUserId}</code>\n` +
@@ -210,13 +212,23 @@ export async function handleAdminCustomerView(
   const purchasedOrders = getPurchasedOrdersByUserId(telegramUserId);
   const buckets = countByBucket(orders);
   const purchasedItems = getEntitlementsByUserId(telegramUserId).length;
-  const username = orders.find((order) => order.telegramUsername)?.telegramUsername;
-  const name = customerDisplayName(username, telegramUserId);
+  const profile = getTelegramUserById(telegramUserId);
+  const fallbackUsername =
+    orders.find((order) => order.telegramUsername)?.telegramUsername ?? null;
+  const name = formatUserDisplayName(profile, telegramUserId, fallbackUsername);
+  const usernameHandle = formatUsernameHandle(
+    profile?.username ?? fallbackUsername
+  );
   const totalSpent = sumApprovedPurchaseAmounts(purchasedOrders);
+
+  const usernameLine = usernameHandle
+    ? `🔗 Username: ${escapeHtml(usernameHandle)}\n`
+    : "";
 
   const text =
     "👤 <b>بطاقة العميل</b>\n\n" +
     `👤 العميل: ${escapeHtml(name)}\n` +
+    usernameLine +
     `🆔 Telegram ID: <code>${telegramUserId}</code>\n` +
     `📦 عدد المنتجات المشتراة: ${purchasedItems}\n` +
     `🧾 إجمالي الطلبات: ${orders.length}\n` +

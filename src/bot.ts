@@ -2,6 +2,7 @@ import { Bot } from "grammy";
 import type { EnvConfig } from "./config/env";
 import { CB } from "./keyboards/menus";
 import { createAdminMiddleware, isAdmin } from "./middleware/adminAuth";
+import { trackTelegramUser } from "./middleware/trackUser";
 import { InviteLinkService } from "./services/inviteLink";
 import { logger } from "./utils/logger";
 import { getDatabase } from "./database/db";
@@ -65,6 +66,8 @@ export function createBot(config: EnvConfig): Bot {
   const bot = new Bot(config.botToken);
   const inviteLinkService = new InviteLinkService(bot.api, config.channelId);
   const adminOnly = createAdminMiddleware(config);
+
+  bot.use(trackTelegramUser);
 
   bot.command("start", handleStart);
   bot.command("myproducts", handleMyProducts);

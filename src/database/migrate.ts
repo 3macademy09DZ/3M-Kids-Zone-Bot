@@ -99,4 +99,32 @@ export function runMigrations(database: DatabaseSync): void {
         ON orders(order_number);
     `);
   }
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS telegram_users (
+      telegram_id INTEGER PRIMARY KEY,
+      first_name TEXT,
+      last_name TEXT,
+      username TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+
+  if (tableExists(database, "orders")) {
+    database.exec(`
+      INSERT OR IGNORE INTO telegram_users (telegram_id, username)
+      SELECT
+        telegram_user_id,
+        (
+          SELECT o2.telegram_username
+          FROM orders o2
+          WHERE o2.telegram_user_id = o.telegram_user_id
+            AND o2.telegram_username IS NOT NULL
+            AND TRIM(o2.telegram_username) != ''
+          ORDER BY o2.id DESC
+          LIMIT 1
+        )
+      FROM (SELECT DISTINCT telegram_user_id FROM orders) o;
+    `);
+  }
 }

@@ -64,6 +64,14 @@ function initSchema(database: DatabaseSync): void {
 
     CREATE INDEX IF NOT EXISTS idx_product_content_type
       ON product_content(product_id, content_type);
+
+    CREATE TABLE IF NOT EXISTS telegram_users (
+      telegram_id INTEGER PRIMARY KEY,
+      first_name TEXT,
+      last_name TEXT,
+      username TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   runMigrations(database);
