@@ -61,7 +61,7 @@ export function buildSectionContentMessage(
   } else {
     lines.push("*المحتوى المتاح:*");
     for (const item of items) {
-      lines.push(`• ${item.titleAr}`);
+      lines.push(`• ${item.titleAr} — ${formatPriceDzd(item.price)}`);
     }
     lines.push("", "_اضغط على عنصر لفتحه:_");
   }
@@ -140,7 +140,10 @@ export function customerSectionItemsKeyboard(
     const prefix =
       contentType === "video" ? "🎬" : contentType === "game" ? "🎮" : "📁";
     keyboard
-      .text(`${prefix} ${item.titleAr}`, `${CB.MY_CONTENT_ITEM}${item.id}`)
+      .text(
+        `${prefix} ${item.titleAr} — ${formatPriceDzd(item.price)}`,
+        `${CB.MY_CONTENT_ITEM}${item.id}`
+      )
       .row();
   }
 
