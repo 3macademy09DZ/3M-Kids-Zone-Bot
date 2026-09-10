@@ -43,6 +43,7 @@ import {
   handleAdminSettingsPayment,
   handleAdminSettingsStartEdit,
   handleAdminSettingsToggle,
+  handleAdminSettingsDeleteAdminUsername,
 } from "./handlers/adminSettings";
 import { SETTINGS_KEYS } from "./database/settings";
 import {
@@ -301,6 +302,12 @@ export function createBot(config: EnvConfig): Bot {
   );
   bot.callbackQuery(CB.ADMIN_SET_ADMIN, adminOnly, (ctx) =>
     handleAdminSettingsAdmin(ctx, config)
+  );
+  bot.callbackQuery(CB.ADMIN_SET_ADMIN_USER, adminOnly, (ctx) =>
+    handleAdminSettingsStartEdit(ctx, "admin_username")
+  );
+  bot.callbackQuery(CB.ADMIN_SET_ADMIN_USER_DEL, adminOnly, (ctx) =>
+    handleAdminSettingsDeleteAdminUsername(ctx, config)
   );
   bot.callbackQuery(CB.ADMIN_SET_CH_EDIT, adminOnly, (ctx) =>
     handleAdminSettingsStartEdit(ctx, "channel_id")

@@ -11,6 +11,7 @@ export const SETTINGS_KEYS = {
   REDOTPAY_PAYMENT_INFO: "redotpay_payment_info",
   CCP_ENABLED: "ccp_enabled",
   REDOTPAY_ENABLED: "redotpay_enabled",
+  ADMIN_USERNAME: "admin_username",
 } as const;
 
 export type SettingsKey = (typeof SETTINGS_KEYS)[keyof typeof SETTINGS_KEYS];
@@ -40,4 +41,13 @@ export function setSettingOverride(key: string, value: string): void {
         updated_at = datetime('now')
     `
   ).run(key, value);
+}
+
+export function deleteSettingOverride(key: string): void {
+  if (FORBIDDEN_KEYS.has(key) || FORBIDDEN_KEYS.has(key.toLowerCase())) {
+    throw new Error("This setting cannot be deleted");
+  }
+
+  const db = getDatabase();
+  db.prepare("DELETE FROM settings WHERE key = ?").run(key);
 }

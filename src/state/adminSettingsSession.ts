@@ -4,7 +4,8 @@ export type AdminSettingsEditField =
   | "ccp_account_info"
   | "baridimob_rip"
   | "payment_account_name"
-  | "redotpay_payment_info";
+  | "redotpay_payment_info"
+  | "admin_username";
 
 export interface AdminSettingsSession {
   field: AdminSettingsEditField;

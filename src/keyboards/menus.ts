@@ -71,6 +71,8 @@ export const CB = {
   ADMIN_SET_PAY_RDP_ON: "aset_pr1",
   ADMIN_SET_PAY_RDP_OFF: "aset_pr0",
   ADMIN_SET_CANCEL: "aset_x",
+  ADMIN_SET_ADMIN_USER: "aset_aue",
+  ADMIN_SET_ADMIN_USER_DEL: "aset_aud",
   ADMIN_BACKUP: "admin_bak",
   ADMIN_BACK: "admin_back",
   ADMIN_CONTENT: "admin_content",
@@ -385,6 +387,19 @@ export function adminSettingsPaymentKeyboard(input: {
     )
     .row()
     .text("🔙 رجوع", CB.ADMIN_SETTINGS);
+}
+
+export function adminSettingsAdminKeyboard(hasUsername: boolean): InlineKeyboard {
+  const keyboard = new InlineKeyboard()
+    .text("✏️ تعديل Username المسؤول", CB.ADMIN_SET_ADMIN_USER)
+    .row();
+
+  if (hasUsername) {
+    keyboard.text("🗑️ حذف Username", CB.ADMIN_SET_ADMIN_USER_DEL).row();
+  }
+
+  keyboard.text("🔙 رجوع", CB.ADMIN_SETTINGS);
+  return keyboard;
 }
 
 export function adminSettingsCancelKeyboard(): InlineKeyboard {
