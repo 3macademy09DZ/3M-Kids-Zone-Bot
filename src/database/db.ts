@@ -34,7 +34,11 @@ function initSchema(database: DatabaseSync): void {
       payment_proof_media_kind TEXT,
       payment_submitted_at TEXT,
       payment_reviewed_at TEXT,
-      purchase_price INTEGER
+      purchase_price INTEGER,
+      promo_code TEXT,
+      original_price INTEGER,
+      discount_amount INTEGER,
+      promo_counted INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE INDEX IF NOT EXISTS idx_orders_telegram_user_id
@@ -71,6 +75,18 @@ function initSchema(database: DatabaseSync): void {
       last_name TEXT,
       username TEXT,
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS promo_codes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT NOT NULL UNIQUE,
+      discount_type TEXT NOT NULL CHECK(discount_type IN ('percent', 'fixed')),
+      discount_value INTEGER NOT NULL,
+      expires_at TEXT,
+      max_uses INTEGER,
+      used_count INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
 

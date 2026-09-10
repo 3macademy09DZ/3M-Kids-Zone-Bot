@@ -2,7 +2,7 @@ import { getEntitlementsByUserId } from "../database/entitlements";
 import { getContentItemById } from "../database/content";
 import { getPurchasedOrdersByUserId } from "../database/orders";
 import type { Order } from "../database/types";
-import { normalizePrice } from "./price";
+import { normalizeMoneyAmount, normalizePrice } from "./price";
 
 function oldestPurchasedOrder(orders: Order[]): Order | null {
   if (orders.length === 0) {
@@ -46,7 +46,7 @@ export function getOwnedContentPriceMap(
       );
     }
 
-    const snapshot = normalizePrice(order?.purchasePrice);
+    const snapshot = normalizeMoneyAmount(order?.purchasePrice);
     if (snapshot != null) {
       prices.set(entitlement.contentId, snapshot);
     }
@@ -56,7 +56,7 @@ export function getOwnedContentPriceMap(
 }
 
 export function resolveApprovedOrderPrice(order: Order): number | null {
-  const snapshot = normalizePrice(order.purchasePrice);
+  const snapshot = normalizeMoneyAmount(order.purchasePrice);
   if (snapshot != null) {
     return snapshot;
   }
@@ -88,5 +88,9 @@ export function resolveOwnedItemPrice(
   item: { id: number; price?: number | null },
   ownedPrices: Map<number, number>
 ): number | null {
-  return ownedPrices.get(item.id) ?? normalizePrice(item.price);
+  const owned = ownedPrices.get(item.id);
+  if (owned != null) {
+    return owned;
+  }
+  return normalizePrice(item.price);
 }

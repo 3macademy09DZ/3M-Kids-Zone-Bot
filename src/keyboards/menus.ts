@@ -29,6 +29,23 @@ export const CB = {
   ADMIN_APPROVE_ORDER: "admin_approve_order:",
   ADMIN_CUSTOMERS: "admin_customers",
   ADMIN_STATS: "admin_stats",
+  ADMIN_PROMO: "admin_promo",
+  ADMIN_PROMO_NEW: "admin_pnw",
+  ADMIN_PROMO_LIST: "admin_pl:",
+  ADMIN_PROMO_VIEW: "admin_pv:",
+  ADMIN_PROMO_TYPE_PERCENT: "admin_pt:p",
+  ADMIN_PROMO_TYPE_FIXED: "admin_pt:f",
+  ADMIN_PROMO_NO_EXPIRY: "admin_pe0",
+  ADMIN_PROMO_UNLIMITED: "admin_pu0",
+  ADMIN_PROMO_OFF: "admin_pof:",
+  ADMIN_PROMO_ON: "admin_pon:",
+  ADMIN_PROMO_DEL: "admin_pd:",
+  ADMIN_PROMO_DEL_OK: "admin_pdc:",
+  ADMIN_PROMO_CANCEL: "admin_px",
+  PROMO_HAS: "promo_has:",
+  PROMO_SKIP: "promo_skip:",
+  PROMO_RETRY: "promo_try:",
+  PROMO_CONFIRM: "promo_ok:",
   ADMIN_CUSTOMERS_PAGE: "admin_cu:",
   ADMIN_CUSTOMER_VIEW: "admin_cv:",
   ADMIN_CUSTOMER_PRODUCTS: "admin_cp:",
@@ -117,6 +134,126 @@ export function confirmOrderKeyboard(
     .text("🏠 القائمة الرئيسية", CB.BACK_MAIN);
 }
 
+export function promoChoiceKeyboard(
+  contentId: number,
+  productId: string
+): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("🎟️ لدي كود تخفيض", `${CB.PROMO_HAS}${contentId}`)
+    .row()
+    .text("➡️ متابعة بدون كود", `${CB.PROMO_SKIP}${contentId}`)
+    .row()
+    .text("↩️ رجوع", `${CB.ORDER_PRODUCT}${productId}`)
+    .row()
+    .text("🏠 القائمة الرئيسية", CB.BACK_MAIN);
+}
+
+export function promoInvalidKeyboard(contentId: number): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("🔄 إدخال كود آخر", `${CB.PROMO_RETRY}${contentId}`)
+    .row()
+    .text("➡️ متابعة بدون كود", `${CB.PROMO_SKIP}${contentId}`)
+    .row()
+    .text("🏠 القائمة الرئيسية", CB.BACK_MAIN);
+}
+
+export function promoConfirmKeyboard(
+  contentId: number,
+  productId: string
+): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("✅ تأكيد الطلب", `${CB.PROMO_CONFIRM}${contentId}`)
+    .row()
+    .text("↩️ رجوع", `${CB.ORDER_PRODUCT}${productId}`)
+    .row()
+    .text("🏠 القائمة الرئيسية", CB.BACK_MAIN);
+}
+
+export function adminPromoHubKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("➕ إنشاء كود جديد", CB.ADMIN_PROMO_NEW)
+    .row()
+    .text("📋 الأكواد الحالية", `${CB.ADMIN_PROMO_LIST}0`)
+    .row()
+    .text("🔙 رجوع", CB.ADMIN_BACK);
+}
+
+export function adminPromoCancelKeyboard(): InlineKeyboard {
+  return new InlineKeyboard().text("↩️ إلغاء", CB.ADMIN_PROMO_CANCEL);
+}
+
+export function adminPromoTypeKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("نسبة مئوية %", CB.ADMIN_PROMO_TYPE_PERCENT)
+    .row()
+    .text("مبلغ ثابت بالدينار", CB.ADMIN_PROMO_TYPE_FIXED)
+    .row()
+    .text("↩️ إلغاء", CB.ADMIN_PROMO_CANCEL);
+}
+
+export function adminPromoExpiryKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("بدون تاريخ انتهاء", CB.ADMIN_PROMO_NO_EXPIRY)
+    .row()
+    .text("↩️ إلغاء", CB.ADMIN_PROMO_CANCEL);
+}
+
+export function adminPromoMaxUsesKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("غير محدود", CB.ADMIN_PROMO_UNLIMITED)
+    .row()
+    .text("↩️ إلغاء", CB.ADMIN_PROMO_CANCEL);
+}
+
+export function adminPromoListKeyboard(input: {
+  promos: { id: number; code: string }[];
+  page: number;
+  totalPages: number;
+}): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+
+  for (const promo of input.promos) {
+    keyboard.text(`🎟️ ${promo.code}`, `${CB.ADMIN_PROMO_VIEW}${promo.id}`).row();
+  }
+
+  if (input.totalPages > 1) {
+    if (input.page > 0) {
+      keyboard.text("◀️ السابق", `${CB.ADMIN_PROMO_LIST}${input.page - 1}`);
+    }
+    if (input.page + 1 < input.totalPages) {
+      keyboard.text("▶️ التالي", `${CB.ADMIN_PROMO_LIST}${input.page + 1}`);
+    }
+    keyboard.row();
+  }
+
+  keyboard.text("🔙 رجوع", CB.ADMIN_PROMO);
+  return keyboard;
+}
+
+export function adminPromoViewKeyboard(input: {
+  id: number;
+  isActive: boolean;
+}): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  if (input.isActive) {
+    keyboard.text("⏸️ تعطيل الكود", `${CB.ADMIN_PROMO_OFF}${input.id}`).row();
+  } else {
+    keyboard.text("▶️ تفعيل الكود", `${CB.ADMIN_PROMO_ON}${input.id}`).row();
+  }
+  keyboard
+    .text("🗑️ حذف الكود", `${CB.ADMIN_PROMO_DEL}${input.id}`)
+    .row()
+    .text("🔙 رجوع", `${CB.ADMIN_PROMO_LIST}0`);
+  return keyboard;
+}
+
+export function adminPromoDeleteConfirmKeyboard(id: number): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("✅ نعم، احذف", `${CB.ADMIN_PROMO_DEL_OK}${id}`)
+    .row()
+    .text("↩️ إلغاء", `${CB.ADMIN_PROMO_VIEW}${id}`);
+}
+
 export function paymentMethodKeyboard(orderId: number): InlineKeyboard {
   return new InlineKeyboard()
     .text("💳 CCP / BaridiMob", `${CB.PAY_METHOD_CCP}${orderId}`)
@@ -142,6 +279,8 @@ export function adminMenuKeyboard(): InlineKeyboard {
     .text("👥 العملاء", CB.ADMIN_CUSTOMERS)
     .row()
     .text("📊 إحصائيات المبيعات", CB.ADMIN_STATS)
+    .row()
+    .text("🎟️ أكواد التخفيض", CB.ADMIN_PROMO)
     .row()
     .text("🔗 روابط الدعوة", CB.ADMIN_INVITES)
     .row()

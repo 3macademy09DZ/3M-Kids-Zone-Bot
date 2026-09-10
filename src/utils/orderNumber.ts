@@ -1,4 +1,5 @@
 import type { Order, PaymentMethod } from "../database/types";
+import { formatPriceDzd } from "./price";
 
 export function formatOrderNumber(id: number): string {
   return `3M-${String(id).padStart(6, "0")}`;
@@ -62,15 +63,22 @@ export function buildPurchaseReceipt(input: {
   priceLabel: string;
 }): string {
   const method = formatPaymentMethodName(input.order.paymentMethod);
+  const order = input.order;
+  const priceBlock = order.promoCode
+    ? `💰 السعر الأصلي: ${formatPriceDzd(order.originalPrice)}\n` +
+      `🎟️ كود التخفيض: ${order.promoCode}\n` +
+      `💸 التخفيض: ${formatPriceDzd(order.discountAmount)}\n` +
+      `✅ المبلغ المدفوع: ${formatPriceDzd(order.purchasePrice)}\n`
+    : `💰 السعر: ${input.priceLabel}\n`;
 
   return (
     "✅ تم تأكيد الدفع بنجاح\n\n" +
     "🧾 إيصال الطلب\n" +
-    `رقم الطلب: ${getOrderDisplayNumber(input.order)}\n` +
+    `رقم الطلب: ${getOrderDisplayNumber(order)}\n` +
     `📦 المنتج: ${input.productName}\n` +
-    `💰 السعر: ${input.priceLabel}\n` +
+    priceBlock +
     `💳 طريقة الدفع: ${method}\n` +
-    `📅 التاريخ: ${formatApprovalDate(input.order.paymentReviewedAt)}\n` +
+    `📅 التاريخ: ${formatApprovalDate(order.paymentReviewedAt)}\n` +
     "الحالة: ✅ مدفوع ومقبول\n\n" +
     "شكرًا لاختياركم 3M Kids Zone 💜"
   );

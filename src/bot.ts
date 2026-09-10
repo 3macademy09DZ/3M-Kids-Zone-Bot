@@ -14,6 +14,11 @@ import {
   handleProductSelect,
   handleVideoSelect,
   handleConfirmOrder,
+  handlePromoHas,
+  handlePromoSkip,
+  handlePromoRetry,
+  handlePromoConfirm,
+  handleCheckoutPromoInput,
 } from "./handlers/order";
 import type { AdminOrderSection } from "./database/types";
 import {
@@ -35,6 +40,20 @@ import {
   handleAdminCustomerOrders,
 } from "./handlers/adminCustomers";
 import { handleAdminStats } from "./handlers/adminStats";
+import {
+  handleAdminPromoMenu,
+  handleAdminPromoNew,
+  handleAdminPromoList,
+  handleAdminPromoView,
+  handleAdminPromoSetActive,
+  handleAdminPromoDeleteAsk,
+  handleAdminPromoDeleteConfirm,
+  handleAdminPromoType,
+  handleAdminPromoNoExpiry,
+  handleAdminPromoUnlimited,
+  handleAdminPromoCancel,
+  handleAdminPromoInput,
+} from "./handlers/adminPromo";
 import {
   handleCustomerPaymentProof,
   handleResubmitPayment,
@@ -93,6 +112,18 @@ export function createBot(config: EnvConfig): Bot {
   bot.callbackQuery(new RegExp(`^${CB.CONFIRM_ORDER}(\\d+)$`), async (ctx) => {
     const contentId = Number(ctx.match![1]);
     await handleConfirmOrder(ctx, contentId);
+  });
+  bot.callbackQuery(new RegExp(`^${CB.PROMO_HAS}(\\d+)$`), async (ctx) => {
+    await handlePromoHas(ctx, Number(ctx.match![1]));
+  });
+  bot.callbackQuery(new RegExp(`^${CB.PROMO_SKIP}(\\d+)$`), async (ctx) => {
+    await handlePromoSkip(ctx, Number(ctx.match![1]));
+  });
+  bot.callbackQuery(new RegExp(`^${CB.PROMO_RETRY}(\\d+)$`), async (ctx) => {
+    await handlePromoRetry(ctx, Number(ctx.match![1]));
+  });
+  bot.callbackQuery(new RegExp(`^${CB.PROMO_CONFIRM}(\\d+)$`), async (ctx) => {
+    await handlePromoConfirm(ctx, Number(ctx.match![1]));
   });
 
   bot.callbackQuery(new RegExp(`^${CB.PAY_METHOD_CCP}(\\d+)$`), async (ctx) => {
@@ -209,6 +240,35 @@ export function createBot(config: EnvConfig): Bot {
     }
   );
   bot.callbackQuery(CB.ADMIN_STATS, adminOnly, handleAdminStats);
+  bot.callbackQuery(CB.ADMIN_PROMO, adminOnly, handleAdminPromoMenu);
+  bot.callbackQuery(CB.ADMIN_PROMO_NEW, adminOnly, handleAdminPromoNew);
+  bot.callbackQuery(CB.ADMIN_PROMO_CANCEL, adminOnly, handleAdminPromoCancel);
+  bot.callbackQuery(CB.ADMIN_PROMO_TYPE_PERCENT, adminOnly, (ctx) =>
+    handleAdminPromoType(ctx, "percent")
+  );
+  bot.callbackQuery(CB.ADMIN_PROMO_TYPE_FIXED, adminOnly, (ctx) =>
+    handleAdminPromoType(ctx, "fixed")
+  );
+  bot.callbackQuery(CB.ADMIN_PROMO_NO_EXPIRY, adminOnly, handleAdminPromoNoExpiry);
+  bot.callbackQuery(CB.ADMIN_PROMO_UNLIMITED, adminOnly, handleAdminPromoUnlimited);
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_PROMO_LIST}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminPromoList(ctx, Number(ctx.match![1]));
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_PROMO_VIEW}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminPromoView(ctx, Number(ctx.match![1]));
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_PROMO_OFF}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminPromoSetActive(ctx, Number(ctx.match![1]), false);
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_PROMO_ON}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminPromoSetActive(ctx, Number(ctx.match![1]), true);
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_PROMO_DEL_OK}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminPromoDeleteConfirm(ctx, Number(ctx.match![1]));
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_PROMO_DEL}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminPromoDeleteAsk(ctx, Number(ctx.match![1]));
+  });
   bot.callbackQuery(CB.ADMIN_INVITES, adminOnly, (ctx) =>
     handleAdminInvites(ctx, inviteLinkService)
   );
@@ -238,9 +298,19 @@ export function createBot(config: EnvConfig): Bot {
       return;
     }
 
+    const handledCheckoutPromo = await handleCheckoutPromoInput(ctx);
+    if (handledCheckoutPromo) {
+      return;
+    }
+
     if (isAdmin(ctx, config.adminTelegramId)) {
       const handledUpload = await handleAdminContentUpload(ctx);
       if (handledUpload) {
+        return;
+      }
+
+      const handledPromo = await handleAdminPromoInput(ctx);
+      if (handledPromo) {
         return;
       }
     }
