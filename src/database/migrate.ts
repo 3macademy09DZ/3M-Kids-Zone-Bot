@@ -78,6 +78,7 @@ export function runMigrations(database: DatabaseSync): void {
       { name: "payment_submitted_at", ddl: "ALTER TABLE orders ADD COLUMN payment_submitted_at TEXT" },
       { name: "payment_reviewed_at", ddl: "ALTER TABLE orders ADD COLUMN payment_reviewed_at TEXT" },
       { name: "order_number", ddl: "ALTER TABLE orders ADD COLUMN order_number TEXT" },
+      { name: "purchase_price", ddl: "ALTER TABLE orders ADD COLUMN purchase_price INTEGER" },
     ];
 
     for (const column of orderColumns) {

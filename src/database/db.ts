@@ -33,7 +33,8 @@ function initSchema(database: DatabaseSync): void {
       payment_proof_file_id TEXT,
       payment_proof_media_kind TEXT,
       payment_submitted_at TEXT,
-      payment_reviewed_at TEXT
+      payment_reviewed_at TEXT,
+      purchase_price INTEGER
     );
 
     CREATE INDEX IF NOT EXISTS idx_orders_telegram_user_id

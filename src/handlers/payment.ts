@@ -261,7 +261,7 @@ export async function handleCustomerPaymentProof(
       `📦 ${product?.nameAr ?? updated.productId}\n` +
       (item
         ? `${CONTENT_TYPE_EMOJI[item.contentType]} ${item.titleAr}\n` +
-          `💰 ${formatPriceDzd(item.price)}`
+          `💰 ${formatPriceDzd(updated.purchasePrice ?? item.price)}`
         : ""),
     { reply_markup: backToMainKeyboard() }
   );

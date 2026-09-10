@@ -41,6 +41,7 @@ export interface Order {
   paymentProofMediaKind: "photo" | "document" | null;
   paymentSubmittedAt: string | null;
   paymentReviewedAt: string | null;
+  purchasePrice: number | null;
 }
 
 export interface CreateOrderInput {
@@ -48,5 +49,6 @@ export interface CreateOrderInput {
   telegramUsername: string | null;
   productId: string;
   contentId: number;
+  purchasePrice?: number | null;
   notes?: string | null;
 }
