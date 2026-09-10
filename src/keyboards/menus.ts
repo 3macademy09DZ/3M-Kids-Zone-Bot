@@ -28,6 +28,10 @@ export const CB = {
   ADMIN_ORDER_VIEW: "admin_ov:",
   ADMIN_APPROVE_ORDER: "admin_approve_order:",
   ADMIN_CUSTOMERS: "admin_customers",
+  ADMIN_CUSTOMERS_PAGE: "admin_cu:",
+  ADMIN_CUSTOMER_VIEW: "admin_cv:",
+  ADMIN_CUSTOMER_PRODUCTS: "admin_cp:",
+  ADMIN_CUSTOMER_ORDERS: "admin_co:",
   ADMIN_INVITES: "admin_invites",
   ADMIN_SETTINGS: "admin_settings",
   ADMIN_BACK: "admin_back",
@@ -266,6 +270,89 @@ export function adminOrderSectionListKeyboard(input: {
   }
 
   keyboard.text("🔙 رجوع إلى الطلبات", CB.ADMIN_ORDERS);
+  return keyboard;
+}
+
+export function adminCustomersListKeyboard(input: {
+  customerIds: number[];
+  page: number;
+  totalPages: number;
+}): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+
+  for (const customerId of input.customerIds) {
+    keyboard
+      .text("👤 فتح العميل", `${CB.ADMIN_CUSTOMER_VIEW}${customerId}`)
+      .row();
+  }
+
+  if (input.totalPages > 1) {
+    if (input.page > 0) {
+      keyboard.text("⬅️ السابق", `${CB.ADMIN_CUSTOMERS_PAGE}${input.page - 1}`);
+    }
+    if (input.page + 1 < input.totalPages) {
+      keyboard.text("التالي ➡️", `${CB.ADMIN_CUSTOMERS_PAGE}${input.page + 1}`);
+    }
+    keyboard.row();
+  }
+
+  keyboard.text("↩️ لوحة الإدارة", CB.ADMIN_BACK);
+  return keyboard;
+}
+
+export function adminCustomerCardKeyboard(input: {
+  telegramUserId: number;
+  purchasedCount: number;
+}): InlineKeyboard {
+  return new InlineKeyboard()
+    .text(
+      `📦 المنتجات المشتراة (${input.purchasedCount})`,
+      `${CB.ADMIN_CUSTOMER_PRODUCTS}${input.telegramUserId}`
+    )
+    .row()
+    .text("🧾 طلبات العميل", `${CB.ADMIN_CUSTOMER_ORDERS}${input.telegramUserId}`)
+    .row()
+    .text("🔙 رجوع إلى العملاء", CB.ADMIN_CUSTOMERS);
+}
+
+export function adminCustomerProductsKeyboard(telegramUserId: number): InlineKeyboard {
+  return new InlineKeyboard().text(
+    "🔙 رجوع إلى العميل",
+    `${CB.ADMIN_CUSTOMER_VIEW}${telegramUserId}`
+  );
+}
+
+export function adminCustomerOrdersKeyboard(input: {
+  telegramUserId: number;
+  orders: { id: number; displayNumber: string }[];
+  page: number;
+  totalPages: number;
+}): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+
+  for (const order of input.orders) {
+    keyboard
+      .text(`📂 فتح ${order.displayNumber}`, `${CB.ADMIN_ORDER_VIEW}${order.id}:all`)
+      .row();
+  }
+
+  if (input.totalPages > 1) {
+    if (input.page > 0) {
+      keyboard.text(
+        "⬅️ السابق",
+        `${CB.ADMIN_CUSTOMER_ORDERS}${input.telegramUserId}:${input.page - 1}`
+      );
+    }
+    if (input.page + 1 < input.totalPages) {
+      keyboard.text(
+        "التالي ➡️",
+        `${CB.ADMIN_CUSTOMER_ORDERS}${input.telegramUserId}:${input.page + 1}`
+      );
+    }
+    keyboard.row();
+  }
+
+  keyboard.text("🔙 رجوع إلى العميل", `${CB.ADMIN_CUSTOMER_VIEW}${input.telegramUserId}`);
   return keyboard;
 }
 
