@@ -2,6 +2,11 @@ import type { Context } from "grammy";
 import type { Message, User } from "grammy/types";
 import type { EnvConfig } from "../config/env";
 import { formatContactLink } from "../config/env";
+import {
+  isContactActive,
+  paymentMethodOptions,
+  resolveAppSettings,
+} from "../config/appSettings";
 import { getContentItemById } from "../database/content";
 import { CONTENT_TYPE_EMOJI } from "../database/contentTypes";
 import {
@@ -74,12 +79,13 @@ function formatCcpAccountBlock(raw: string | undefined): string {
 }
 
 function buildCcpPaymentInfo(config: EnvConfig): string {
-  const name = config.paymentAccountName ?? "غير مُعدّ";
-  const rip = config.baridimobRip ?? "غير مُعدّ";
+  const settings = resolveAppSettings(config);
+  const name = settings.paymentAccountName ?? "غير مُعدّ";
+  const rip = settings.baridimobRip ?? "غير مُعدّ";
 
   return (
     "💳 <b>الدفع عبر CCP / BaridiMob</b>\n\n" +
-    `${formatCcpAccountBlock(config.ccpAccountInfo)}\n` +
+    `${formatCcpAccountBlock(settings.ccpAccountInfo)}\n` +
     `👤 صاحب الحساب:\n${escapeHtml(name)}\n` +
     `🔢 RIP: ${escapeHtml(rip)}\n\n` +
     "بعد التحويل، أرسل الآن <b>صورة إثبات الدفع</b> (Screenshot)."
@@ -87,7 +93,8 @@ function buildCcpPaymentInfo(config: EnvConfig): string {
 }
 
 function buildRedotPayInfo(config: EnvConfig): string {
-  const info = config.redotpayPaymentInfo ?? "غير مُعدّ";
+  const settings = resolveAppSettings(config);
+  const info = settings.redotpayPaymentInfo ?? "غير مُعدّ";
   return (
     "💳 <b>الدفع عبر RedotPay</b>\n\n" +
     `${escapeHtml(info)}\n\n` +
@@ -151,6 +158,17 @@ export async function handleSelectPaymentMethod(
     return;
   }
 
+  const settings = resolveAppSettings(config);
+  const enabled =
+    method === "ccp" ? settings.ccpEnabled : settings.redotpayEnabled;
+  if (!enabled) {
+    await ctx.answerCallbackQuery({
+      text: "⛔ طريقة الدفع هذه غير مفعّلة حالياً.",
+      show_alert: true,
+    });
+    return;
+  }
+
   await ctx.answerCallbackQuery();
   setOrderPaymentMethod(orderId, method);
   setPaymentProofSession(user.id, { orderId });
@@ -192,7 +210,10 @@ export async function handleResubmitPayment(
       "📤 *إعادة إرسال إثبات الدفع*\n\nاختر طريقة الدفع أولًا:",
       {
         parse_mode: "Markdown",
-        reply_markup: paymentMethodKeyboard(order.id),
+        reply_markup: paymentMethodKeyboard(
+          order.id,
+          paymentMethodOptions(resolveAppSettings(config))
+        ),
       }
     );
     return;
@@ -360,15 +381,16 @@ export function buildRejectedPaymentMessage(
   config: EnvConfig,
   orderId: number
 ): { text: string; keyboard: ReturnType<typeof resubmitPaymentKeyboard> } {
-  const contactLink = formatContactLink(config.contactUsername);
+  const settings = resolveAppSettings(config);
+  const contactLink = formatContactLink(settings.contactUsername);
   let text =
     "❌ لم يتم قبول إثبات الدفع.\n\n" +
     "يمكنك إعادة إرسال إثبات أوضح، أو التواصل معنا للمساعدة.";
 
-  if (contactLink && config.contactUsername) {
-    const display = config.contactUsername.startsWith("@")
-      ? config.contactUsername
-      : `@${config.contactUsername}`;
+  if (isContactActive(settings) && contactLink && settings.contactUsername) {
+    const display = settings.contactUsername.startsWith("@")
+      ? settings.contactUsername
+      : `@${settings.contactUsername}`;
     text += `\n\n📞 ${display}`;
   }
 
