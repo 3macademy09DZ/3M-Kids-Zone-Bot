@@ -8,7 +8,6 @@ import {
   getAllOrders,
   getOrderById,
   getOrdersWithInviteLinks,
-  getUniqueCustomerIds,
   rejectPayment,
 } from "../database/orders";
 import { getContentItemById } from "../database/content";
@@ -73,7 +72,7 @@ function escapeHtml(text: string): string {
     .replace(/>/g, "&gt;");
 }
 
-function getStatusLabel(status: string): string {
+export function getStatusLabel(status: string): string {
   const normalized = String(status).trim().toLowerCase();
   if (normalized === "review") {
     return STATUS_LABELS.pending;
@@ -81,7 +80,7 @@ function getStatusLabel(status: string): string {
   return STATUS_LABELS[normalized as OrderStatus] ?? status;
 }
 
-function getOrderItemLabel(order: Order): {
+export function getOrderItemLabel(order: Order): {
   emoji: string;
   label: string;
   title: string;
@@ -510,40 +509,6 @@ export async function handleAdminRejectPayment(
 
   const order = getOrderById(orderId) ?? result.order;
   await updateAdminOrderDetailsMessage(ctx, order, backSectionForOrder(order));
-}
-
-export async function handleAdminCustomers(ctx: Context): Promise<void> {
-  await ctx.answerCallbackQuery();
-  const customerIds = getUniqueCustomerIds();
-
-  if (customerIds.length === 0) {
-    await ctx.editMessageText("👥 *العملاء*\n\nلا يوجد عملاء مسجّلون حالياً.", {
-      parse_mode: "Markdown",
-      reply_markup: adminBackKeyboard(),
-    });
-    return;
-  }
-
-  const orders = getAllOrders();
-  const lines = customerIds.slice(0, 20).map((id) => {
-    const userOrders = orders.filter((o) => o.telegramUserId === id);
-    const username = userOrders[0]?.telegramUsername;
-    const display = username ? `@${username}` : `ID: ${id}`;
-    return `• ${display} — ${userOrders.length} طلب/طلبات`;
-  });
-
-  const text =
-    `👥 *العملاء* (${customerIds.length})\n\n` +
-    lines.join("\n") +
-    (customerIds.length > 20
-      ? `\n\n_… و${customerIds.length - 20} عميل آخر_`
-      : "") +
-    "\n\n_إدارة متقدّمة للعملاء — قريباً._";
-
-  await ctx.editMessageText(text, {
-    parse_mode: "Markdown",
-    reply_markup: adminBackKeyboard(),
-  });
 }
 
 export async function handleAdminInvites(

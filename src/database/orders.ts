@@ -329,7 +329,12 @@ export function getNextInviteLinkName(): string {
 export function getUniqueCustomerIds(): number[] {
   const db = getDatabase();
   const rows = getAllRows(
-    db.prepare("SELECT DISTINCT telegram_user_id FROM orders ORDER BY telegram_user_id")
+    db.prepare(`
+      SELECT telegram_user_id
+      FROM orders
+      GROUP BY telegram_user_id
+      ORDER BY MAX(id) DESC
+    `)
   ) as { telegram_user_id: number }[];
   return rows.map((r) => r.telegram_user_id);
 }

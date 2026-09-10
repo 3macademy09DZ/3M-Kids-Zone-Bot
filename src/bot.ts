@@ -24,10 +24,15 @@ import {
   handleAdminApproveOrder,
   handleAdminAcceptPayment,
   handleAdminRejectPayment,
-  handleAdminCustomers,
   handleAdminInvites,
   handleAdminSettings,
 } from "./handlers/admin";
+import {
+  handleAdminCustomers,
+  handleAdminCustomerView,
+  handleAdminCustomerProducts,
+  handleAdminCustomerOrders,
+} from "./handlers/adminCustomers";
 import {
   handleCustomerPaymentProof,
   handleResubmitPayment,
@@ -166,7 +171,39 @@ export function createBot(config: EnvConfig): Bot {
     const contentItemId = Number(ctx.match![1]);
     await handleAdminContentDelete(ctx, contentItemId);
   });
-  bot.callbackQuery(CB.ADMIN_CUSTOMERS, adminOnly, handleAdminCustomers);
+  bot.callbackQuery(CB.ADMIN_CUSTOMERS, adminOnly, (ctx) =>
+    handleAdminCustomers(ctx, 0)
+  );
+  bot.callbackQuery(
+    new RegExp(`^${CB.ADMIN_CUSTOMERS_PAGE}(\\d+)$`),
+    adminOnly,
+    async (ctx) => {
+      await handleAdminCustomers(ctx, Number(ctx.match![1]));
+    }
+  );
+  bot.callbackQuery(
+    new RegExp(`^${CB.ADMIN_CUSTOMER_VIEW}(\\d+)$`),
+    adminOnly,
+    async (ctx) => {
+      await handleAdminCustomerView(ctx, Number(ctx.match![1]));
+    }
+  );
+  bot.callbackQuery(
+    new RegExp(`^${CB.ADMIN_CUSTOMER_PRODUCTS}(\\d+)$`),
+    adminOnly,
+    async (ctx) => {
+      await handleAdminCustomerProducts(ctx, Number(ctx.match![1]));
+    }
+  );
+  bot.callbackQuery(
+    new RegExp(`^${CB.ADMIN_CUSTOMER_ORDERS}(\\d+)(?::(\\d+))?$`),
+    adminOnly,
+    async (ctx) => {
+      const telegramUserId = Number(ctx.match![1]);
+      const page = ctx.match![2] ? Number(ctx.match![2]) : 0;
+      await handleAdminCustomerOrders(ctx, telegramUserId, page);
+    }
+  );
   bot.callbackQuery(CB.ADMIN_INVITES, adminOnly, (ctx) =>
     handleAdminInvites(ctx, inviteLinkService)
   );

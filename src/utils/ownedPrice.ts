@@ -1,4 +1,5 @@
 import { getEntitlementsByUserId } from "../database/entitlements";
+import { getContentItemById } from "../database/content";
 import { getPurchasedOrdersByUserId } from "../database/orders";
 import type { Order } from "../database/types";
 import { normalizePrice } from "./price";
@@ -52,6 +53,35 @@ export function getOwnedContentPriceMap(
   }
 
   return prices;
+}
+
+export function resolveApprovedOrderPrice(order: Order): number | null {
+  const snapshot = normalizePrice(order.purchasePrice);
+  if (snapshot != null) {
+    return snapshot;
+  }
+
+  if (order.contentId == null) {
+    return null;
+  }
+
+  const item = getContentItemById(order.contentId);
+  return normalizePrice(item?.price);
+}
+
+export function sumApprovedPurchaseAmounts(orders: Order[]): number {
+  const seen = new Set<number>();
+  let total = 0;
+
+  for (const order of orders) {
+    if (seen.has(order.id)) {
+      continue;
+    }
+    seen.add(order.id);
+    total += resolveApprovedOrderPrice(order) ?? 0;
+  }
+
+  return total;
 }
 
 export function resolveOwnedItemPrice(
