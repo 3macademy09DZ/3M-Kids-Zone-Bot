@@ -25,6 +25,11 @@ import {
   updateCatalogSubjectName,
 } from "../database/catalogSubjects";
 import {
+  ensureDefaultTrimestersForSubject,
+  getTrimesterById,
+  getTrimestersBySubjectId,
+} from "../database/catalogTrimesters";
+import {
   createSchoolYear,
   getActiveSchoolYears,
   getAllSchoolYears,
@@ -43,6 +48,8 @@ import {
   adminCatalogItemKeyboard,
   adminCatalogItemsKeyboard,
   adminCatalogSubjectKeyboard,
+  adminCatalogTrimesterBackKeyboard,
+  adminCatalogTrimestersKeyboard,
   adminCatalogTypeKeyboard,
   adminCatalogTypesKeyboard,
   adminCatalogYearKeyboard,
@@ -241,6 +248,79 @@ export async function handleAdminCatalogSubjectView(
     {
       parse_mode: "Markdown",
       reply_markup: adminCatalogSubjectKeyboard(yearId, subject),
+    }
+  );
+}
+
+export async function handleAdminCatalogSubjectContent(
+  ctx: Context,
+  yearId: number,
+  subjectId: number
+): Promise<void> {
+  await ctx.answerCallbackQuery();
+  if (ctx.from?.id) {
+    clearAdminCatalogSession(ctx.from.id);
+  }
+
+  const subject = getCatalogSubjectById(subjectId);
+  const year = getSchoolYearById(yearId);
+  if (!subject || !year || subject.yearId !== yearId) {
+    await ctx.editMessageText("❌ المادة غير موجودة.", {
+      reply_markup: adminCatalogYearsKeyboard(getAllSchoolYears()),
+    });
+    return;
+  }
+
+  ensureDefaultTrimestersForSubject(subjectId);
+  const trimesters = getTrimestersBySubjectId(subjectId);
+
+  await ctx.editMessageText(
+    `📅 ${year.nameAr}\n` +
+      `📚 *${subject.nameAr}*\n\n` +
+      "_اختر الفصل الدراسي:_",
+    {
+      parse_mode: "Markdown",
+      reply_markup: adminCatalogTrimestersKeyboard(yearId, subjectId, trimesters),
+    }
+  );
+}
+
+export async function handleAdminCatalogTrimesterView(
+  ctx: Context,
+  yearId: number,
+  subjectId: number,
+  trimesterId: number
+): Promise<void> {
+  await ctx.answerCallbackQuery();
+  if (ctx.from?.id) {
+    clearAdminCatalogSession(ctx.from.id);
+  }
+
+  const subject = getCatalogSubjectById(subjectId);
+  const year = getSchoolYearById(yearId);
+  const trimester = getTrimesterById(trimesterId);
+
+  if (
+    !subject ||
+    !year ||
+    !trimester ||
+    subject.yearId !== yearId ||
+    trimester.subjectId !== subjectId
+  ) {
+    await ctx.editMessageText("❌ الفصل غير موجود.", {
+      reply_markup: adminCatalogYearsKeyboard(getAllSchoolYears()),
+    });
+    return;
+  }
+
+  await ctx.editMessageText(
+    `📅 ${year.nameAr}\n` +
+      `📚 ${subject.nameAr}\n` +
+      `${trimester.emoji} *${trimester.nameAr}*\n\n` +
+      "_لا يوجد محتوى في هذا الفصل حالياً._",
+    {
+      parse_mode: "Markdown",
+      reply_markup: adminCatalogTrimesterBackKeyboard(yearId, subjectId),
     }
   );
 }
@@ -826,6 +906,7 @@ export async function handleAdminCatalogInput(ctx: Context): Promise<boolean> {
       yearId: session.yearId,
       nameAr: text,
     });
+    ensureDefaultTrimestersForSubject(subject.id);
     clearAdminCatalogSession(adminId);
     await ctx.reply(`✅ تمت إضافة المادة: *${subject.nameAr}*`, {
       parse_mode: "Markdown",

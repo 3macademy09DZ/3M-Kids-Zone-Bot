@@ -115,6 +115,8 @@ export const CB = {
   ADMIN_CAT_SUBJECT_ADD: "admin_cat_sa:",
   ADMIN_CAT_SUBJECT_RENAME: "admin_cat_sr:",
   ADMIN_CAT_SUBJECT_TOGGLE: "admin_cat_st:",
+  ADMIN_CAT_SUBJECT_CONTENT: "admin_cat_sct:",
+  ADMIN_CAT_TRIMESTER: "admin_cat_trm:",
   ADMIN_CAT_TYPES: "admin_cat_ty",
   ADMIN_CAT_TYPE: "admin_cat_tp:",
   ADMIN_CAT_TYPE_ADD: "admin_cat_ta",
@@ -1032,6 +1034,8 @@ export function adminCatalogSubjectKeyboard(
   subject: { id: number; nameAr: string; isActive: boolean }
 ): InlineKeyboard {
   return new InlineKeyboard()
+    .text("📚 محتوى المادة", `${CB.ADMIN_CAT_SUBJECT_CONTENT}${yearId}:${subject.id}`)
+    .row()
     .text("✏️ تغيير اسم المادة", `${CB.ADMIN_CAT_SUBJECT_RENAME}${yearId}:${subject.id}`)
     .row()
     .text(
@@ -1040,6 +1044,34 @@ export function adminCatalogSubjectKeyboard(
     )
     .row()
     .text("↩️ رجوع", `${CB.ADMIN_CAT_YEAR}${yearId}`);
+}
+
+export function adminCatalogTrimestersKeyboard(
+  yearId: number,
+  subjectId: number,
+  trimesters: { id: number; nameAr: string; emoji: string }[]
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  for (const trimester of trimesters) {
+    keyboard
+      .text(
+        `${trimester.emoji} ${trimester.nameAr}`,
+        `${CB.ADMIN_CAT_TRIMESTER}${yearId}:${subjectId}:${trimester.id}`
+      )
+      .row();
+  }
+  keyboard.text("↩️ رجوع", `${CB.ADMIN_CAT_SUBJECT}${yearId}:${subjectId}`);
+  return keyboard;
+}
+
+export function adminCatalogTrimesterBackKeyboard(
+  yearId: number,
+  subjectId: number
+): InlineKeyboard {
+  return new InlineKeyboard().text(
+    "↩️ رجوع",
+    `${CB.ADMIN_CAT_SUBJECT_CONTENT}${yearId}:${subjectId}`
+  );
 }
 
 export function adminCatalogTypesKeyboard(
