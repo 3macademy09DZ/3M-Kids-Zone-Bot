@@ -46,6 +46,8 @@ import {
   handleAdminCatalogYearRename,
   handleAdminCatalogYearToggle,
   handleAdminCatalogSubjectView,
+  handleAdminCatalogSubjectContent,
+  handleAdminCatalogTrimesterView,
   handleAdminCatalogSubjectAdd,
   handleAdminCatalogSubjectRename,
   handleAdminCatalogSubjectToggle,
@@ -288,6 +290,29 @@ export function createBot(config: EnvConfig): Bot {
   bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_SUBJECT}(\\d+):(\\d+)$`), adminOnly, async (ctx) => {
     await handleAdminCatalogSubjectView(ctx, Number(ctx.match![1]), Number(ctx.match![2]));
   });
+  bot.callbackQuery(
+    new RegExp(`^${CB.ADMIN_CAT_SUBJECT_CONTENT}(\\d+):(\\d+)$`),
+    adminOnly,
+    async (ctx) => {
+      await handleAdminCatalogSubjectContent(
+        ctx,
+        Number(ctx.match![1]),
+        Number(ctx.match![2])
+      );
+    }
+  );
+  bot.callbackQuery(
+    new RegExp(`^${CB.ADMIN_CAT_TRIMESTER}(\\d+):(\\d+):(\\d+)$`),
+    adminOnly,
+    async (ctx) => {
+      await handleAdminCatalogTrimesterView(
+        ctx,
+        Number(ctx.match![1]),
+        Number(ctx.match![2]),
+        Number(ctx.match![3])
+      );
+    }
+  );
   bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_SUBJECT_ADD}(\\d+)$`), adminOnly, async (ctx) => {
     await handleAdminCatalogSubjectAdd(ctx, Number(ctx.match![1]));
   });

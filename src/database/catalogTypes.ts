@@ -36,6 +36,16 @@ export interface CreateCatalogSubjectInput {
   sortOrder?: number;
 }
 
+export interface CatalogTrimester {
+  id: number;
+  subjectId: number;
+  nameAr: string;
+  emoji: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
 export interface CreateCatalogContentTypeInput {
   slug: string;
   nameAr: string;

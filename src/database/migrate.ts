@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { seedDefaultTrimestersForAllSubjects } from "./catalogTrimesterSeed";
 import { logger } from "../utils/logger";
 
 interface TableInfoRow {
@@ -265,6 +266,20 @@ export function runMigrations(database: DatabaseSync): void {
       is_active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS catalog_trimesters (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      subject_id INTEGER NOT NULL,
+      name_ar TEXT NOT NULL,
+      emoji TEXT NOT NULL DEFAULT '📘',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (subject_id) REFERENCES catalog_subjects(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_catalog_trimesters_subject
+      ON catalog_trimesters(subject_id);
   `);
 
   if (tableExists(database, "product_content")) {
@@ -297,6 +312,9 @@ export function runMigrations(database: DatabaseSync): void {
 
   seedDefaultCatalogContentTypes(database);
   seedDefaultPrimaryCatalogYearsAndSubjects(database);
+  if (tableExists(database, "catalog_trimesters")) {
+    seedDefaultTrimestersForAllSubjects(database);
+  }
 }
 
 function seedDefaultCatalogContentTypes(database: DatabaseSync): void {
