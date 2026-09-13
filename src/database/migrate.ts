@@ -296,6 +296,7 @@ export function runMigrations(database: DatabaseSync): void {
   }
 
   seedDefaultCatalogContentTypes(database);
+  seedDefaultPrimaryCatalogYearsAndSubjects(database);
 }
 
 function seedDefaultCatalogContentTypes(database: DatabaseSync): void {
@@ -314,5 +315,68 @@ function seedDefaultCatalogContentTypes(database: DatabaseSync): void {
 
   for (const row of defaults) {
     insert.run(row);
+  }
+}
+
+const PRIMARY_SCHOOL_YEARS = [
+  { nameAr: "السنة الأولى ابتدائي", sortOrder: 1 },
+  { nameAr: "السنة الثانية ابتدائي", sortOrder: 2 },
+  { nameAr: "السنة الثالثة ابتدائي", sortOrder: 3 },
+  { nameAr: "السنة الرابعة ابتدائي", sortOrder: 4 },
+  { nameAr: "السنة الخامسة ابتدائي", sortOrder: 5 },
+] as const;
+
+const PRIMARY_SCHOOL_SUBJECTS = [
+  { nameAr: "اللغة العربية", sortOrder: 1 },
+  { nameAr: "الرياضيات", sortOrder: 2 },
+  { nameAr: "اللغة الفرنسية", sortOrder: 3 },
+  { nameAr: "التربية العلمية", sortOrder: 4 },
+  { nameAr: "التربية الإسلامية", sortOrder: 5 },
+  { nameAr: "التربية المدنية", sortOrder: 6 },
+  { nameAr: "التاريخ والجغرافيا", sortOrder: 7 },
+] as const;
+
+function seedDefaultPrimaryCatalogYearsAndSubjects(
+  database: DatabaseSync
+): void {
+  if (!tableExists(database, "catalog_school_years")) {
+    return;
+  }
+  if (!tableExists(database, "catalog_subjects")) {
+    return;
+  }
+
+  const findYearId = database.prepare(`
+    SELECT id FROM catalog_school_years WHERE name_ar = ? LIMIT 1
+  `);
+  const insertYear = database.prepare(`
+    INSERT INTO catalog_school_years (name_ar, sort_order)
+    VALUES (?, ?)
+  `);
+  const findSubjectId = database.prepare(`
+    SELECT id FROM catalog_subjects WHERE year_id = ? AND name_ar = ? LIMIT 1
+  `);
+  const insertSubject = database.prepare(`
+    INSERT INTO catalog_subjects (year_id, name_ar, sort_order)
+    VALUES (?, ?, ?)
+  `);
+
+  for (const year of PRIMARY_SCHOOL_YEARS) {
+    const existingYear = findYearId.get(year.nameAr) as { id: number } | undefined;
+    const yearId =
+      existingYear?.id ??
+      Number(
+        insertYear.run(year.nameAr, year.sortOrder).lastInsertRowid
+      );
+
+    for (const subject of PRIMARY_SCHOOL_SUBJECTS) {
+      const existingSubject = findSubjectId.get(yearId, subject.nameAr) as
+        | { id: number }
+        | undefined;
+      if (existingSubject) {
+        continue;
+      }
+      insertSubject.run(yearId, subject.nameAr, subject.sortOrder);
+    }
   }
 }
