@@ -8,7 +8,7 @@ export interface ProductContentItem {
   contentType: ContentType;
   titleAr: string;
   descriptionAr: string | null;
-  telegramFileId: string;
+  telegramFileId: string | null;
   telegramFileUniqueId: string | null;
   mediaKind: MediaKind;
   fileName: string | null;
@@ -16,6 +16,11 @@ export interface ProductContentItem {
   price: number | null;
   sortOrder: number;
   createdAt: string;
+  yearId?: number | null;
+  subjectId?: number | null;
+  catalogContentTypeId?: number | null;
+  academyUrl?: string | null;
+  isCatalogItem?: boolean;
 }
 
 export interface CreateContentInput {

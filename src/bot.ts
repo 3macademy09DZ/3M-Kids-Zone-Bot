@@ -33,7 +33,41 @@ import {
   handlePromoConfirm,
   handleCheckoutPromoInput,
   handleAcademyDetailsInfo,
+  handleCatalogYearSelect,
+  handleCatalogSubjectSelect,
+  handleCatalogTypeSelect,
+  handleCatalogAcademyOpen,
 } from "./handlers/order";
+import {
+  handleAdminCatalogMenu,
+  handleAdminCatalogYears,
+  handleAdminCatalogYearView,
+  handleAdminCatalogYearAdd,
+  handleAdminCatalogYearRename,
+  handleAdminCatalogYearToggle,
+  handleAdminCatalogSubjectView,
+  handleAdminCatalogSubjectAdd,
+  handleAdminCatalogSubjectRename,
+  handleAdminCatalogSubjectToggle,
+  handleAdminCatalogTypes,
+  handleAdminCatalogTypeView,
+  handleAdminCatalogTypeAdd,
+  handleAdminCatalogTypeRename,
+  handleAdminCatalogTypeToggle,
+  handleAdminCatalogBrowseYears,
+  handleAdminCatalogBrowseSubjects,
+  handleAdminCatalogBrowseTypes,
+  handleAdminCatalogItemsList,
+  handleAdminCatalogItemView,
+  handleAdminCatalogItemAdd,
+  handleAdminCatalogItemRename,
+  handleAdminCatalogItemPrice,
+  handleAdminCatalogItemUrl,
+  handleAdminCatalogItemDeleteAsk,
+  handleAdminCatalogItemDeleteConfirm,
+  handleAdminCatalogCancel,
+  handleAdminCatalogInput,
+} from "./handlers/adminCatalog";
 import type { AdminOrderSection } from "./database/types";
 import {
   handleAdminCommand,
@@ -96,18 +130,7 @@ import {
   handleResubmitPayment,
   handleSelectPaymentMethod,
 } from "./handlers/payment";
-import {
-  handleAdminContentMenu,
-  handleAdminContentProduct,
-  handleAdminContentSection,
-  handleAdminContentAdd,
-  handleAdminContentItem,
-  handleAdminContentRename,
-  handleAdminContentPrice,
-  handleAdminContentDelete,
-  handleAdminContentDeleteConfirm,
-  handleAdminContentUpload,
-} from "./handlers/adminContent";
+import { handleAdminContentUpload } from "./handlers/adminContent";
 import {
   handleMyProducts,
   handleMyProductsOpen,
@@ -154,14 +177,36 @@ export function createBot(config: EnvConfig): Bot {
   );
   bot.callbackQuery(CB.ORDER, handleOrderMenu);
 
+  bot.callbackQuery(new RegExp(`^${CB.CAT_YEAR}(\\d+)$`), async (ctx) => {
+    await handleCatalogYearSelect(ctx, Number(ctx.match![1]));
+  });
+  bot.callbackQuery(new RegExp(`^${CB.CAT_SUBJECT}(\\d+):(\\d+)$`), async (ctx) => {
+    await handleCatalogSubjectSelect(ctx, Number(ctx.match![1]), Number(ctx.match![2]));
+  });
+  bot.callbackQuery(
+    new RegExp(`^${CB.CAT_TYPE}(\\d+):(\\d+):(\\d+)$`),
+    async (ctx) => {
+      await handleCatalogTypeSelect(
+        ctx,
+        Number(ctx.match![1]),
+        Number(ctx.match![2]),
+        Number(ctx.match![3])
+      );
+    }
+  );
+  bot.callbackQuery(new RegExp(`^${CB.CAT_ITEM}(\\d+)$`), async (ctx) => {
+    await handleVideoSelect(ctx, Number(ctx.match![1]));
+  });
+  bot.callbackQuery(new RegExp(`^${CB.CAT_ACADEMY}(\\d+)$`), async (ctx) => {
+    await handleCatalogAcademyOpen(ctx, Number(ctx.match![1]));
+  });
+
   bot.callbackQuery(new RegExp(`^${CB.ORDER_PRODUCT}(.+)$`), async (ctx) => {
-    const productId = ctx.match![1];
-    await handleProductSelect(ctx, productId);
+    await handleProductSelect(ctx, ctx.match![1]);
   });
 
   bot.callbackQuery(new RegExp(`^${CB.ORDER_CONTENT}(\\d+)$`), async (ctx) => {
-    const contentId = Number(ctx.match![1]);
-    await handleVideoSelect(ctx, contentId);
+    await handleVideoSelect(ctx, Number(ctx.match![1]));
   });
   bot.callbackQuery(CB.ACADEMY_DETAILS, handleAcademyDetailsInfo);
 
@@ -227,40 +272,113 @@ export function createBot(config: EnvConfig): Bot {
     const orderId = Number(ctx.match![1]);
     await handleAdminRejectPayment(ctx, orderId, config);
   });
-  bot.callbackQuery(CB.ADMIN_CONTENT, adminOnly, handleAdminContentMenu);
-  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CONTENT_PRODUCT}(.+)$`), adminOnly, async (ctx) => {
-    const productId = ctx.match![1];
-    await handleAdminContentProduct(ctx, productId);
+  bot.callbackQuery(CB.ADMIN_CONTENT, adminOnly, handleAdminCatalogMenu);
+  bot.callbackQuery(CB.ADMIN_CAT_HUB, adminOnly, handleAdminCatalogMenu);
+  bot.callbackQuery(CB.ADMIN_CAT_YEARS, adminOnly, handleAdminCatalogYears);
+  bot.callbackQuery(CB.ADMIN_CAT_YEAR_ADD, adminOnly, handleAdminCatalogYearAdd);
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_YEAR}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogYearView(ctx, Number(ctx.match![1]));
   });
-  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CONTENT_SECTION}(.+):(video|game|file)$`), adminOnly, async (ctx) => {
-    const productId = ctx.match![1];
-    const contentType = ctx.match![2] as ContentType;
-    await handleAdminContentSection(ctx, productId, contentType);
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_YEAR_RENAME}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogYearRename(ctx, Number(ctx.match![1]));
   });
-  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CONTENT_ADD}(.+):(video|game|file)$`), adminOnly, async (ctx) => {
-    const productId = ctx.match![1];
-    const contentType = ctx.match![2] as ContentType;
-    await handleAdminContentAdd(ctx, productId, contentType);
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_YEAR_TOGGLE}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogYearToggle(ctx, Number(ctx.match![1]));
   });
-  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CONTENT_ITEM}(\\d+)$`), adminOnly, async (ctx) => {
-    const contentItemId = Number(ctx.match![1]);
-    await handleAdminContentItem(ctx, contentItemId);
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_SUBJECT}(\\d+):(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogSubjectView(ctx, Number(ctx.match![1]), Number(ctx.match![2]));
   });
-  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CONTENT_RENAME}(\\d+)$`), adminOnly, async (ctx) => {
-    const contentItemId = Number(ctx.match![1]);
-    await handleAdminContentRename(ctx, contentItemId);
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_SUBJECT_ADD}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogSubjectAdd(ctx, Number(ctx.match![1]));
   });
-  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CONTENT_PRICE}(\\d+)$`), adminOnly, async (ctx) => {
-    const contentItemId = Number(ctx.match![1]);
-    await handleAdminContentPrice(ctx, contentItemId);
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_SUBJECT_RENAME}(\\d+):(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogSubjectRename(
+      ctx,
+      Number(ctx.match![1]),
+      Number(ctx.match![2])
+    );
   });
-  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CONTENT_DELETE_CONFIRM}(\\d+)$`), adminOnly, async (ctx) => {
-    const contentItemId = Number(ctx.match![1]);
-    await handleAdminContentDeleteConfirm(ctx, contentItemId);
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_SUBJECT_TOGGLE}(\\d+):(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogSubjectToggle(
+      ctx,
+      Number(ctx.match![1]),
+      Number(ctx.match![2])
+    );
   });
-  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CONTENT_DELETE}(\\d+)$`), adminOnly, async (ctx) => {
-    const contentItemId = Number(ctx.match![1]);
-    await handleAdminContentDelete(ctx, contentItemId);
+  bot.callbackQuery(CB.ADMIN_CAT_TYPES, adminOnly, handleAdminCatalogTypes);
+  bot.callbackQuery(CB.ADMIN_CAT_TYPE_ADD, adminOnly, handleAdminCatalogTypeAdd);
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_TYPE}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogTypeView(ctx, Number(ctx.match![1]));
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_TYPE_RENAME}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogTypeRename(ctx, Number(ctx.match![1]));
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_TYPE_TOGGLE}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogTypeToggle(ctx, Number(ctx.match![1]));
+  });
+  bot.callbackQuery(CB.ADMIN_CAT_BROWSE, adminOnly, handleAdminCatalogBrowseYears);
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_BROWSE_YEAR}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogBrowseSubjects(ctx, Number(ctx.match![1]));
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_BROWSE_SUBJECT}(\\d+):(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogBrowseTypes(
+      ctx,
+      Number(ctx.match![1]),
+      Number(ctx.match![2])
+    );
+  });
+  bot.callbackQuery(
+    new RegExp(`^${CB.ADMIN_CAT_BROWSE_TYPE}(\\d+):(\\d+):(\\d+)$`),
+    adminOnly,
+    async (ctx) => {
+      await handleAdminCatalogItemsList(
+        ctx,
+        Number(ctx.match![1]),
+        Number(ctx.match![2]),
+        Number(ctx.match![3])
+      );
+    }
+  );
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_ITEMS}(\\d+):(\\d+):(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogItemsList(
+      ctx,
+      Number(ctx.match![1]),
+      Number(ctx.match![2]),
+      Number(ctx.match![3])
+    );
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_ITEM}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogItemView(ctx, Number(ctx.match![1]));
+  });
+  bot.callbackQuery(
+    new RegExp(`^${CB.ADMIN_CAT_ITEM_ADD}(\\d+):(\\d+):(\\d+)$`),
+    adminOnly,
+    async (ctx) => {
+      await handleAdminCatalogItemAdd(
+        ctx,
+        Number(ctx.match![1]),
+        Number(ctx.match![2]),
+        Number(ctx.match![3])
+      );
+    }
+  );
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_ITEM_RENAME}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogItemRename(ctx, Number(ctx.match![1]));
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_ITEM_PRICE}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogItemPrice(ctx, Number(ctx.match![1]));
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_ITEM_URL}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogItemUrl(ctx, Number(ctx.match![1]));
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_ITEM_DELETE_OK}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogItemDeleteConfirm(ctx, Number(ctx.match![1]));
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_ITEM_DELETE}(\\d+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogItemDeleteAsk(ctx, Number(ctx.match![1]));
+  });
+  bot.callbackQuery(new RegExp(`^${CB.ADMIN_CAT_CANCEL}(.+)$`), adminOnly, async (ctx) => {
+    await handleAdminCatalogCancel(ctx, ctx.match![1]);
   });
   bot.callbackQuery(CB.ADMIN_CUSTOMERS, adminOnly, (ctx) =>
     handleAdminCustomers(ctx, 0)
@@ -481,6 +599,11 @@ export function createBot(config: EnvConfig): Bot {
     }
 
     if (isAdmin(ctx, config.adminTelegramId)) {
+      const handledCatalog = await handleAdminCatalogInput(ctx);
+      if (handledCatalog) {
+        return;
+      }
+
       const handledUpload = await handleAdminContentUpload(ctx);
       if (handledUpload) {
         return;

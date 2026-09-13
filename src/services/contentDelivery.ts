@@ -17,6 +17,10 @@ export async function deliverContentItem(
   chatId: number,
   item: ProductContentItem
 ): Promise<void> {
+  if (!item.telegramFileId?.trim()) {
+    return;
+  }
+
   const caption = item.descriptionAr
     ? `${item.titleAr}\n\n${item.descriptionAr}`
     : item.titleAr;
