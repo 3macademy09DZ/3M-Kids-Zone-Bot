@@ -100,6 +100,39 @@ export const CB = {
   MY_PRODUCTS_BACK: "my_products_back",
   MY_CONTENT_SECTION: "my_content_section:",
   MY_CONTENT_ITEM: "my_content_item:",
+  CAT_YEAR: "cat_y:",
+  CAT_SUBJECT: "cat_s:",
+  CAT_TYPE: "cat_t:",
+  CAT_ITEM: "cat_i:",
+  CAT_ACADEMY: "cat_acad:",
+  ADMIN_CAT_HUB: "admin_cat_hub",
+  ADMIN_CAT_YEARS: "admin_cat_yrs",
+  ADMIN_CAT_YEAR: "admin_cat_y:",
+  ADMIN_CAT_YEAR_ADD: "admin_cat_ya",
+  ADMIN_CAT_YEAR_RENAME: "admin_cat_yr:",
+  ADMIN_CAT_YEAR_TOGGLE: "admin_cat_yt:",
+  ADMIN_CAT_SUBJECT: "admin_cat_sb:",
+  ADMIN_CAT_SUBJECT_ADD: "admin_cat_sa:",
+  ADMIN_CAT_SUBJECT_RENAME: "admin_cat_sr:",
+  ADMIN_CAT_SUBJECT_TOGGLE: "admin_cat_st:",
+  ADMIN_CAT_TYPES: "admin_cat_ty",
+  ADMIN_CAT_TYPE: "admin_cat_tp:",
+  ADMIN_CAT_TYPE_ADD: "admin_cat_ta",
+  ADMIN_CAT_TYPE_RENAME: "admin_cat_tr:",
+  ADMIN_CAT_TYPE_TOGGLE: "admin_cat_tt:",
+  ADMIN_CAT_BROWSE: "admin_cat_br",
+  ADMIN_CAT_BROWSE_YEAR: "admin_cat_by:",
+  ADMIN_CAT_BROWSE_SUBJECT: "admin_cat_bs:",
+  ADMIN_CAT_BROWSE_TYPE: "admin_cat_bt:",
+  ADMIN_CAT_ITEMS: "admin_cat_il:",
+  ADMIN_CAT_ITEM: "admin_cat_it:",
+  ADMIN_CAT_ITEM_ADD: "admin_cat_ia:",
+  ADMIN_CAT_ITEM_RENAME: "admin_cat_ir:",
+  ADMIN_CAT_ITEM_PRICE: "admin_cat_ip:",
+  ADMIN_CAT_ITEM_URL: "admin_cat_iu:",
+  ADMIN_CAT_ITEM_DELETE: "admin_cat_id:",
+  ADMIN_CAT_ITEM_DELETE_OK: "admin_cat_idk:",
+  ADMIN_CAT_CANCEL: "admin_cat_x:",
 } as const;
 
 export function mainMenuKeyboard(options?: { showContact?: boolean }): InlineKeyboard {
@@ -847,4 +880,302 @@ export function myProductVideosKeyboard(
 
 export function myProductBackKeyboard(): InlineKeyboard {
   return new InlineKeyboard().text("↩️ منتجاتي", CB.MY_PRODUCTS_BACK);
+}
+
+export function catalogHierarchyYearsKeyboard(
+  years: { id: number; nameAr: string }[]
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  for (const year of years) {
+    keyboard.text(`📅 ${year.nameAr}`, `${CB.CAT_YEAR}${year.id}`).row();
+  }
+  keyboard.text("↩️ القائمة الرئيسية", CB.BACK_MAIN);
+  return keyboard;
+}
+
+export function catalogHierarchySubjectsKeyboard(
+  yearId: number,
+  subjects: { id: number; nameAr: string }[]
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  for (const subject of subjects) {
+    keyboard
+      .text(`📚 ${subject.nameAr}`, `${CB.CAT_SUBJECT}${yearId}:${subject.id}`)
+      .row();
+  }
+  keyboard.text("↩️ رجوع", `${CB.CAT_YEAR}${yearId}`).row();
+  keyboard.text("↩️ القائمة الرئيسية", CB.BACK_MAIN);
+  return keyboard;
+}
+
+export function catalogHierarchyTypesKeyboard(
+  yearId: number,
+  subjectId: number,
+  types: { id: number; nameAr: string; emoji: string }[]
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  for (const type of types) {
+    keyboard
+      .text(
+        `${type.emoji} ${type.nameAr}`,
+        `${CB.CAT_TYPE}${yearId}:${subjectId}:${type.id}`
+      )
+      .row();
+  }
+  keyboard
+    .text("↩️ رجوع", `${CB.CAT_SUBJECT}${yearId}:${subjectId}`)
+    .row();
+  keyboard.text("↩️ القائمة الرئيسية", CB.BACK_MAIN);
+  return keyboard;
+}
+
+export function catalogHierarchyItemsKeyboard(
+  yearId: number,
+  subjectId: number,
+  catalogContentTypeId: number,
+  items: { id: number; titleAr: string; price?: number | null }[]
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  for (const item of items) {
+    keyboard
+      .text(
+        `${item.titleAr} — ${formatPriceDzd(item.price)}`,
+        `${CB.CAT_ITEM}${item.id}`
+      )
+      .row();
+  }
+  keyboard
+    .text(
+      "↩️ رجوع",
+      `${CB.CAT_TYPE}${yearId}:${subjectId}:${catalogContentTypeId}`
+    )
+    .row();
+  keyboard.text("↩️ القائمة الرئيسية", CB.BACK_MAIN);
+  return keyboard;
+}
+
+export function catalogHierarchyItemDetailsKeyboard(
+  itemId: number,
+  yearId: number,
+  subjectId: number,
+  catalogContentTypeId: number,
+  academyUrl?: string | null
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  const url = academyUrl?.trim();
+  if (url) {
+    keyboard.url("🌐 عرض التفاصيل في 3M Academy", url).row();
+  } else {
+    keyboard.text("🌐 عرض التفاصيل في 3M Academy", `${CB.CAT_ACADEMY}${itemId}`).row();
+  }
+  keyboard
+    .text(
+      "↩️ رجوع",
+      `${CB.CAT_TYPE}${yearId}:${subjectId}:${catalogContentTypeId}`
+    )
+    .row();
+  keyboard.text("↩️ القائمة الرئيسية", CB.BACK_MAIN);
+  return keyboard;
+}
+
+export function adminCatalogHubKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("📅 السنوات الدراسية", CB.ADMIN_CAT_YEARS)
+    .row()
+    .text("📋 أنواع المحتوى", CB.ADMIN_CAT_TYPES)
+    .row()
+    .text("📂 إدارة عناصر المحتوى", CB.ADMIN_CAT_BROWSE)
+    .row()
+    .text("↩️ لوحة الإدارة", CB.ADMIN_BACK);
+}
+
+export function adminCatalogCancelKeyboard(target: string): InlineKeyboard {
+  return new InlineKeyboard().text("↩️ إلغاء", `${CB.ADMIN_CAT_CANCEL}${target}`);
+}
+
+export function adminCatalogYearsKeyboard(
+  years: { id: number; nameAr: string; isActive?: boolean }[]
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  for (const year of years) {
+    const prefix = year.isActive === false ? "⏸️ " : "";
+    keyboard.text(`${prefix}📅 ${year.nameAr}`, `${CB.ADMIN_CAT_YEAR}${year.id}`).row();
+  }
+  keyboard.text("➕ إضافة سنة", CB.ADMIN_CAT_YEAR_ADD).row();
+  keyboard.text("↩️ رجوع", CB.ADMIN_CAT_HUB);
+  return keyboard;
+}
+
+export function adminCatalogYearKeyboard(
+  year: { id: number; nameAr: string; isActive: boolean },
+  subjects: { id: number; nameAr: string; isActive?: boolean }[]
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  for (const subject of subjects) {
+    const prefix = subject.isActive === false ? "⏸️ " : "";
+    keyboard
+      .text(`${prefix}📚 ${subject.nameAr}`, `${CB.ADMIN_CAT_SUBJECT}${year.id}:${subject.id}`)
+      .row();
+  }
+  keyboard.text("➕ إضافة مادة", `${CB.ADMIN_CAT_SUBJECT_ADD}${year.id}`).row();
+  keyboard.text("✏️ تغيير اسم السنة", `${CB.ADMIN_CAT_YEAR_RENAME}${year.id}`).row();
+  keyboard.text(
+    year.isActive ? "⏸️ تعطيل السنة" : "✅ تفعيل السنة",
+    `${CB.ADMIN_CAT_YEAR_TOGGLE}${year.id}`
+  ).row();
+  keyboard.text("↩️ رجوع", CB.ADMIN_CAT_YEARS);
+  return keyboard;
+}
+
+export function adminCatalogSubjectKeyboard(
+  yearId: number,
+  subject: { id: number; nameAr: string; isActive: boolean }
+): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("✏️ تغيير اسم المادة", `${CB.ADMIN_CAT_SUBJECT_RENAME}${yearId}:${subject.id}`)
+    .row()
+    .text(
+      subject.isActive ? "⏸️ تعطيل المادة" : "✅ تفعيل المادة",
+      `${CB.ADMIN_CAT_SUBJECT_TOGGLE}${yearId}:${subject.id}`
+    )
+    .row()
+    .text("↩️ رجوع", `${CB.ADMIN_CAT_YEAR}${yearId}`);
+}
+
+export function adminCatalogTypesKeyboard(
+  types: { id: number; nameAr: string; emoji: string; isActive?: boolean }[]
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  for (const type of types) {
+    const prefix = type.isActive === false ? "⏸️ " : "";
+    keyboard
+      .text(`${prefix}${type.emoji} ${type.nameAr}`, `${CB.ADMIN_CAT_TYPE}${type.id}`)
+      .row();
+  }
+  keyboard.text("➕ إضافة نوع", CB.ADMIN_CAT_TYPE_ADD).row();
+  keyboard.text("↩️ رجوع", CB.ADMIN_CAT_HUB);
+  return keyboard;
+}
+
+export function adminCatalogTypeKeyboard(contentType: {
+  id: number;
+  nameAr: string;
+  emoji: string;
+  isActive: boolean;
+}): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("✏️ تغيير الاسم", `${CB.ADMIN_CAT_TYPE_RENAME}${contentType.id}`)
+    .row()
+    .text(
+      contentType.isActive ? "⏸️ تعطيل النوع" : "✅ تفعيل النوع",
+      `${CB.ADMIN_CAT_TYPE_TOGGLE}${contentType.id}`
+    )
+    .row()
+    .text("↩️ رجوع", CB.ADMIN_CAT_TYPES);
+}
+
+export function adminCatalogBrowseYearsKeyboard(
+  years: { id: number; nameAr: string }[]
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  for (const year of years) {
+    keyboard.text(`📅 ${year.nameAr}`, `${CB.ADMIN_CAT_BROWSE_YEAR}${year.id}`).row();
+  }
+  keyboard.text("↩️ رجوع", CB.ADMIN_CAT_HUB);
+  return keyboard;
+}
+
+export function adminCatalogBrowseSubjectsKeyboard(
+  yearId: number,
+  subjects: { id: number; nameAr: string }[]
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  for (const subject of subjects) {
+    keyboard
+      .text(`📚 ${subject.nameAr}`, `${CB.ADMIN_CAT_BROWSE_SUBJECT}${yearId}:${subject.id}`)
+      .row();
+  }
+  keyboard.text("↩️ رجوع", CB.ADMIN_CAT_BROWSE);
+  return keyboard;
+}
+
+export function adminCatalogBrowseTypesKeyboard(
+  yearId: number,
+  subjectId: number,
+  types: { id: number; nameAr: string; emoji: string }[]
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  for (const type of types) {
+    keyboard
+      .text(
+        `${type.emoji} ${type.nameAr}`,
+        `${CB.ADMIN_CAT_BROWSE_TYPE}${yearId}:${subjectId}:${type.id}`
+      )
+      .row();
+  }
+  keyboard.text("↩️ رجوع", `${CB.ADMIN_CAT_BROWSE_YEAR}${yearId}`);
+  return keyboard;
+}
+
+export function adminCatalogItemsKeyboard(
+  yearId: number,
+  subjectId: number,
+  catalogContentTypeId: number,
+  items: { id: number; titleAr: string; price?: number | null }[]
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  for (const item of items) {
+    keyboard
+      .text(`${item.titleAr}`, `${CB.ADMIN_CAT_ITEM}${item.id}`)
+      .row();
+  }
+  keyboard
+    .text(
+      "➕ إضافة محتوى",
+      `${CB.ADMIN_CAT_ITEM_ADD}${yearId}:${subjectId}:${catalogContentTypeId}`
+    )
+    .row()
+    .text(
+      "↩️ رجوع",
+      `${CB.ADMIN_CAT_BROWSE_TYPE}${yearId}:${subjectId}:${catalogContentTypeId}`
+    );
+  return keyboard;
+}
+
+export function adminCatalogItemKeyboard(item: {
+  id: number;
+  yearId?: number | null;
+  subjectId?: number | null;
+  catalogContentTypeId?: number | null;
+}): InlineKeyboard {
+  const keyboard = new InlineKeyboard()
+    .text("✏️ تغيير الاسم", `${CB.ADMIN_CAT_ITEM_RENAME}${item.id}`)
+    .row()
+    .text("💰 تغيير السعر", `${CB.ADMIN_CAT_ITEM_PRICE}${item.id}`)
+    .row()
+    .text("🌐 رابط Academy", `${CB.ADMIN_CAT_ITEM_URL}${item.id}`)
+    .row()
+    .text("🗑️ حذف", `${CB.ADMIN_CAT_ITEM_DELETE}${item.id}`)
+    .row();
+
+  if (
+    item.yearId != null &&
+    item.subjectId != null &&
+    item.catalogContentTypeId != null
+  ) {
+    keyboard.text(
+      "↩️ رجوع",
+      `${CB.ADMIN_CAT_ITEMS}${item.yearId}:${item.subjectId}:${item.catalogContentTypeId}`
+    );
+  } else {
+    keyboard.text("↩️ رجوع", CB.ADMIN_CAT_BROWSE);
+  }
+  return keyboard;
+}
+
+export function adminCatalogItemDeleteConfirmKeyboard(itemId: number): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("✅ نعم، احذف", `${CB.ADMIN_CAT_ITEM_DELETE_OK}${itemId}`)
+    .row()
+    .text("↩️ إلغاء", `${CB.ADMIN_CAT_ITEM}${itemId}`);
 }

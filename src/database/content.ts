@@ -13,7 +13,7 @@ interface ContentRow {
   content_type: string;
   title_ar: string;
   description_ar: string | null;
-  telegram_file_id: string;
+  telegram_file_id: string | null;
   telegram_file_unique_id: string | null;
   media_kind: string;
   file_name: string | null;
@@ -21,6 +21,11 @@ interface ContentRow {
   price: number | null;
   sort_order: number;
   created_at: string;
+  year_id?: number | null;
+  subject_id?: number | null;
+  catalog_content_type_id?: number | null;
+  academy_url?: string | null;
+  is_catalog_item?: number | null;
 }
 
 function getRow(
@@ -52,6 +57,11 @@ function mapRow(row: ContentRow): ProductContentItem {
     price: normalizePrice(row.price),
     sortOrder: row.sort_order,
     createdAt: row.created_at,
+    yearId: row.year_id ?? null,
+    subjectId: row.subject_id ?? null,
+    catalogContentTypeId: row.catalog_content_type_id ?? null,
+    academyUrl: row.academy_url ?? null,
+    isCatalogItem: row.is_catalog_item === 1,
   };
 }
 

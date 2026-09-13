@@ -233,4 +233,86 @@ export function runMigrations(database: DatabaseSync): void {
       WHERE sender IS NULL OR TRIM(sender) = ''
     `);
   }
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS catalog_school_years (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name_ar TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS catalog_subjects (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      year_id INTEGER NOT NULL,
+      name_ar TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (year_id) REFERENCES catalog_school_years(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_catalog_subjects_year
+      ON catalog_subjects(year_id);
+
+    CREATE TABLE IF NOT EXISTS catalog_content_types (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      slug TEXT NOT NULL UNIQUE,
+      name_ar TEXT NOT NULL,
+      emoji TEXT NOT NULL DEFAULT '📄',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+
+  if (tableExists(database, "product_content")) {
+    const contentColumns: Array<{ name: string; ddl: string }> = [
+      { name: "year_id", ddl: "ALTER TABLE product_content ADD COLUMN year_id INTEGER" },
+      { name: "subject_id", ddl: "ALTER TABLE product_content ADD COLUMN subject_id INTEGER" },
+      {
+        name: "catalog_content_type_id",
+        ddl: "ALTER TABLE product_content ADD COLUMN catalog_content_type_id INTEGER",
+      },
+      { name: "academy_url", ddl: "ALTER TABLE product_content ADD COLUMN academy_url TEXT" },
+      {
+        name: "is_catalog_item",
+        ddl: "ALTER TABLE product_content ADD COLUMN is_catalog_item INTEGER NOT NULL DEFAULT 0",
+      },
+    ];
+
+    for (const column of contentColumns) {
+      if (!hasColumn(database, "product_content", column.name)) {
+        database.exec(column.ddl);
+        logger.info(`Migration: added product_content.${column.name}`);
+      }
+    }
+
+    database.exec(`
+      CREATE INDEX IF NOT EXISTS idx_product_content_catalog
+        ON product_content(year_id, subject_id, catalog_content_type_id);
+    `);
+  }
+
+  seedDefaultCatalogContentTypes(database);
+}
+
+function seedDefaultCatalogContentTypes(database: DatabaseSync): void {
+  const defaults = [
+    { slug: "lessons", nameAr: "الدروس", emoji: "📘", sortOrder: 1 },
+    { slug: "exercises", nameAr: "التمارين", emoji: "✏️", sortOrder: 2 },
+    { slug: "exams", nameAr: "الاختبارات", emoji: "📝", sortOrder: 3 },
+    { slug: "games", nameAr: "الألعاب والأنشطة", emoji: "🎮", sortOrder: 4 },
+    { slug: "videos", nameAr: "الفيديوهات", emoji: "🎬", sortOrder: 5 },
+  ];
+
+  const insert = database.prepare(`
+    INSERT OR IGNORE INTO catalog_content_types (slug, name_ar, emoji, sort_order)
+    VALUES (@slug, @nameAr, @emoji, @sortOrder)
+  `);
+
+  for (const row of defaults) {
+    insert.run(row);
+  }
 }
